@@ -1,6 +1,12 @@
-use dep::std::uint128::U128;
+use crate::utils::{gt, lt};
+use crate::test_utils::assert_equal;
 
 // BigInt arithmetic
+
+// Number of bits for each limb. With respect to Noir implementation, this
+// represents d.
+global LIMB_BITS: Field = 120;
+global MAX_VALUE_LIMB: Field = 0x100000000000000000000000000000000000000000000000000000000000000000000000000; // The maximum value for a limb is 2^120
 
 // A BigInt is represented in limbs of 120 bits
 // Field has 254 bits
@@ -14,6 +20,147 @@ impl BigInt {
         let limbs_vec = Vec::from_slice(limbs);
         BigInt { limbs: limbs_vec }
     }
+
+    fn add_mod(self, other: Self, p: Self) -> Self {
+        // Check if self and other has the same number of limbs.
+        assert(self.limbs.len() == other.limbs.len());
+
+        // Computes a + b such that each limb is at most 120 + 1 = 121 bits.
+        let mut sum_a_b_limbs = Vec::new();
+        for i in 0..self.limbs.len() {
+            sum_a_b_limbs.push(self.limbs.get(i) + other.limbs.get(i))
+        }
+
+        // Obtain q and c such that a + b = q * p + c, where q == 0 or q == 1.
+        let (q, c) = get_qc_add(self, other, p);
+
+        // If q == 1, we constrain the condition a + b - p - c == 0. Otherwhise,
+        // we constrain to a + b - c == 0.
+
+        let mut reduced_limbs = Vec::new();
+
+        if q == 0 {
+            // Subtracting c from a + b.
+            let (sub_limbs, _) = sub_reduced_limbs(sum_a_b_limbs, c.limbs);
+            for i in 0..self.limbs.len() {
+                reduced_limbs.push(sub_limbs.get(i));
+            }
+        } else if q == 1 {
+            let mut sum_p_c_limbs = Vec::new();
+            for i in 0..self.limbs.len() {
+                sum_p_c_limbs.push(p.limbs.get(i) + c.limbs.get(i))
+            }
+
+            // Subtracting c from a + b.
+            let (sub_limbs, _) = sub_reduced_limbs(sum_a_b_limbs, sum_p_c_limbs);
+            for i in 0..self.limbs.len() {
+                reduced_limbs.push(sub_limbs.get(i));
+            }
+        }
+
+        // Assert if the following conditions hold:
+        // 1. a, b, c have limbs of max 120 bits.
+        // 2. a, b, c are smaller than p.
+        // 3. q is zero or one.
+        // 4. all limbs calculated in the subtraction are zero.
+
+        // Step 1:
+        // Asserting that a, b and c have the same number of limbs. For this, is
+        // just enough to compare a and c, because we know that a and b have the
+        // same number of limbs from the assertion at the beginning.
+        assert(self.limbs.len() == c.limbs.len());
+
+        // Then we assert that each limb of a, b, and c have 120 bits.
+        for i in 0..self.limbs.len() {
+            assert(!gt(self.limbs.get(i), MAX_VALUE_LIMB));
+            assert(!gt(other.limbs.get(i), MAX_VALUE_LIMB));
+            assert(!gt(c.limbs.get(i), MAX_VALUE_LIMB));
+        }
+
+        // We assert that a, b, c are smaller than p.
+        for i in 0..self.limbs.len() {
+            assert(lt(self.limbs.get(i), MAX_VALUE_LIMB));
+            assert(lt(other.limbs.get(i), MAX_VALUE_LIMB));
+            assert(lt(c.limbs.get(i), MAX_VALUE_LIMB));
+        }
+
+        // We assert that q == 0 or q == 1 by checking that q <= 1.
+        assert(!gt(q, 1));
+
+        // We assert that all the limbs in the subtraction are zero.
+        for i in 0..self.limbs.len() {
+            assert(reduced_limbs.get(i) == 0);
+        }
+
+        // Returns c as the final result of the addition mod p.
+        c
+    }
+}
+
+// Subtracts p from res_limbs in such a way that the limbs in the result have
+// d = 120 limbs. Also, the function returns a boolean that tells wether the 
+// subtraction was interrupted in the middle of the computation. 
+pub fn sub_reduced_limbs(res_limbs: Vec<Field>, p: Vec<Field>) -> (Vec<Field>, bool) {
+    // Initialize vector for the same length
+    let mut reduced_limbs: Vec<Field> = Vec::new();
+    for _ in 0..res_limbs.len() {
+        reduced_limbs.push(0);
+    }
+
+    // For the following loop, we'd like to break out but this is not supported in
+    // constrained function. Workaround is to keep a boolean. 
+    // When it is clear that p is too large to subtract, we stop subtracting. 
+    let mut stop_subtracting = false;
+
+    // Per limb, try to subtract the corresponding entry of p, i.e a[i]+b[i]-p[i]
+    // if it is too large, try to get a borrow from the higher limb a[i+1]+b[i+1]
+    // and then compute result a[i]+b[i]+2^120-p[i] (because 120 bits per limb)
+    // if that is not possible, we stop subtracting
+    // Workaround for inverse loop
+    for j in 0..res_limbs.len() {
+        let i = res_limbs.len() - 1 - j;
+
+        if !stop_subtracting { // Workaround for not being able to break out of loop
+            // Check p[i] > res[i]
+            if gt(p.get(i), res_limbs.get(i)) {
+                // If this is the highest limb, we immediately know p cannot be subtracted
+                // and break the loop
+                if i == res_limbs.len() - 1 {
+                    stop_subtracting = true; // work around instead of break
+                } else {
+                    let mut already_borrowed = false;
+                    // Start looking for the next non-zero entry that can give a borrow
+                    for k in (i + 1)..res_limbs.len() {
+                        if !already_borrowed {
+                            if gt(reduced_limbs.get(k), 0) {
+                                // If entry is larger than 0, borrow 1 from there and perform the subtraction 
+                                // borrow 1
+                                reduced_limbs.slice[k] = reduced_limbs.get(k) - 1;
+                                // if k is not i+1, fill the "in between" limbs with the value 2ˆ120-1
+                                let diff = k - i;
+                                if (diff > 1) {
+                                    for l in 1..diff {
+                                        reduced_limbs.slice[i+l] = 1329227995784915872903807060280344575;
+                                    }
+                                }
+
+                                // The borrow of the higher limb has value 2ˆ120 in this limb
+                                // 2ˆ120 is 1329227995784915872903807060280344576
+                                reduced_limbs.slice[i] = 1329227995784915872903807060280344576 + res_limbs.get(i) - p.get(i);
+                                already_borrowed = true;
+                            }
+                        }
+                    }
+                    stop_subtracting = !already_borrowed;
+                }
+            } else {
+                // If p[i] <= res[i], we have easy subtraction: res[i] - p[i]
+                reduced_limbs.slice[i] = res_limbs.get(i) - p.get(i);
+            }
+        }
+    }
+
+    (reduced_limbs, stop_subtracting)
 }
 
 /*
@@ -51,64 +198,7 @@ pub fn get_qc_add(a: BigInt, b: BigInt, p: BigInt) -> (Field, BigInt) {
     }
 
     // Step 2. Try to subtract p, if possible
-    // Initialize vector for the same length
-    let mut reduced_limbs: Vec<Field> = Vec::new();
-    for i in 0..a.limbs.len() {
-        reduced_limbs.push(0);
-    }
-
-    // For the following loop, we'd like to break out but this is not supported in
-    // constrained function. Workaround is to keep a boolean. 
-    // When it is clear that p is too large to subtract, we stop subtracting. 
-    let mut stop_subtracting = false;
-
-    // Per limb, try to subtract the corresponding entry of p, i.e a[i]+b[i]-p[i]
-    // if it is too large, try to get a borrow from the higher limb a[i+1]+b[i+1]
-    // and then compute result a[i]+b[i]+2^120-p[i] (because 120 bits per limb)
-    // if that is not possible, we stop subtracting
-    // Workaround for inverse loop
-    for j in 0..a.limbs.len() {
-        let i = a.limbs.len() - 1 - j;
-
-        if !stop_subtracting { // Workaround for not being able to break out of loop
-            // Check p[i] > res[i]
-            if gt(p.limbs.get(i), res_limbs.get(i)) {
-                // If this is the highest limb, we immediately know p cannot be subtracted
-                // and break the loop
-                if i == a.limbs.len() - 1 {
-                    stop_subtracting = true; // work around instead of break
-                } else {
-                    let mut already_borrowed = false;
-                    // Start looking for the next non-zero entry that can give a borrow
-                    for k in (i + 1)..a.limbs.len() {
-                        if !already_borrowed {
-                            if gt(reduced_limbs.get(k), 0) {
-                                // If entry is larger than 0, borrow 1 from there and perform the subtraction 
-                                // borrow 1
-                                reduced_limbs.slice[k] = reduced_limbs.get(k) - 1;
-                                // if k is not i+1, fill the "in between" limbs with the value 2ˆ120-1
-                                let diff = k - i;
-                                if (diff > 1) {
-                                    for l in 1..diff {
-                                        reduced_limbs.slice[i+l] = 1329227995784915872903807060280344575;
-                                    }
-                                }
-
-                                // The borrow of the higher limb has value 2ˆ120 in this limb
-                                // 2ˆ120 is 1329227995784915872903807060280344576
-                                reduced_limbs.slice[i] = 1329227995784915872903807060280344576 + res_limbs.get(i)-p.limbs.get(i);
-                                already_borrowed = true;
-                            }
-                        }
-                    }
-                    stop_subtracting = !already_borrowed;
-                }
-            } else {
-                // If p[i] <= res[i], we have easy subtraction: res[i] - p[i]
-                reduced_limbs.slice[i] = res_limbs.get(i) - p.limbs.get(i);
-            }
-        }
-    }
+    let (reduced_limbs, stop_subtracting) = sub_reduced_limbs(res_limbs, p.limbs);
 
     // 3. If p was subtracted, return (q=0, a+b). Else return (q=1, a+b-p)
 
@@ -118,7 +208,7 @@ pub fn get_qc_add(a: BigInt, b: BigInt, p: BigInt) -> (Field, BigInt) {
     // Once again, this requires the limbs to have max 128 bits
     for i in 0..a.limbs.len() {
         if !limbs_different { // workaround instead of break
-            if neq(reduced_limbs.get(i), res_limbs.get(i)) {
+            if reduced_limbs.get(i) != res_limbs.get(i) {
                 limbs_different = true;
             }
         }
@@ -135,27 +225,42 @@ pub fn get_qc_add(a: BigInt, b: BigInt, p: BigInt) -> (Field, BigInt) {
     }
 }
 
-// TODO place these helper functions in utils / somewhere
+/*
+Function: add_mod
 
-// Returns the field cast to U128
-// assymed field has <= 128 bits
-fn to_U128(f: Field) -> U128 {
-    let f_le_bytes: [u8;16] = f.to_le_bytes(16).as_array();
-    U128::from_le_bytes(f_le_bytes)
+Testcase: happy path with q == 1.
+*/
+#[test]
+fn test_add_mod_q_1() {
+    let mut a = BigInt::from_slice(&[2, 1, 0, 0]);
+    let mut b = BigInt::from_slice(&[0, 1, 0, 0]);
+
+    // This modulus should trigger reduction.
+    // Subtracting p is easy, and doesn't require using any borrow
+    let p = BigInt::from_slice(&[1, 2, 0, 0]);
+
+    let c = a.add_mod(b, p);
+
+    assert_equal(c.limbs, [1, 0, 0, 0].as_slice(), 4);
 }
 
-// Returns f1 > f2, when intrepreting the fields as uints
-// assumes fields have <= 128 bits
-fn gt(f1: Field, f2: Field) -> bool {
-    // Convert both fields to U128 and compare
-    to_U128(f1) > to_U128(f2)
-}
+/*
+Function: add_mod
 
-// Returns f1 != f2, when intrepreting the fields as uints
-// assumes fields have <= 128 bits
-fn neq(f1: Field, f2: Field) -> bool {
-    // Convert both fields to U128 and compare
-    to_U128(f1) != to_U128(f2)
+Testcase: happy path with q == 0, and with no reduction.
+*/
+#[test]
+fn test_add_mod_q_0() {
+    let mut a = BigInt::from_slice(&[2, 1, 0, 0]);
+    let mut b = BigInt::from_slice(&[0, 1, 0, 0]);
+
+    // This modulus should trigger reduction.
+    // Subtracting p is easy, and doesn't require using any borrow
+    let p = BigInt::from_slice(&[1, 2, 1, 2]);
+
+    let c = a.add_mod(b, p);
+
+    assert_equal(c.limbs, [2, 2, 0, 0].as_slice(), 4);
 }
 
 /*
@@ -165,12 +270,12 @@ Testcase: a+b < p
 */
 #[test]
 fn test_get_qc_add_no_reduction() {
-    let a = BigInt::from_slice(&[1, 2, 3, 4]);
-    let b = BigInt::from_slice(&[5, 6, 7, 8]);
+    let mut a = BigInt::from_slice(&[1, 2, 3, 4]);
+    let mut b = BigInt::from_slice(&[5, 6, 7, 8]);
     // This modulus is large, and won't trigger reduction mod p
     let p = BigInt::from_slice(&[100, 100, 100, 100]);
 
-    let (q, c) = get_qc_add(a, b, p);
+    let (_, c) = get_qc_add(a, b, p);
 
     assert_equal(c.limbs, [6, 8, 10, 12].as_slice(), 4)
 }
@@ -184,14 +289,14 @@ Testcase:
 */
 #[test]
 fn test_get_qc_add_with_reduction() {
-    let a = BigInt::from_slice(&[1, 2, 3, 4]);
-    let b = BigInt::from_slice(&[5, 6, 7, 8]);
+    let mut a = BigInt::from_slice(&[1, 2, 3, 4]);
+    let mut b = BigInt::from_slice(&[5, 6, 7, 8]);
 
     // This modulus should trigger reduction.
     // Subtracting p is easy, and doesn't require using any borrow
     let p = BigInt::from_slice(&[0, 0, 0, 9]);
 
-    let (q, c) = get_qc_add(a, b, p);
+    let (_, c) = get_qc_add(a, b, p);
 
     assert_equal(c.limbs, [6, 8, 10, 3].as_slice(), 4)
 }
@@ -206,14 +311,14 @@ Testcase:
 */
 #[test]
 fn test_get_qc_add_with_reduction_and_borrow() {
-    let a = BigInt::from_slice(&[1, 2, 0, 4]);
-    let b = BigInt::from_slice(&[5, 6, 0, 8]);
+    let mut a = BigInt::from_slice(&[1, 2, 0, 4]);
+    let mut b = BigInt::from_slice(&[5, 6, 0, 8]);
 
     // This modulus should trigger reduction. 
     // Subtracting p will require a borrow for index 2
     let p = BigInt::from_slice(&[0, 0, 1, 9]);
 
-    let (q, c) = get_qc_add(a, b, p);
+    let (_, c) = get_qc_add(a, b, p);
 
     assert_equal(
         c.limbs,
@@ -233,8 +338,8 @@ index 0 borrows from index 2
 */
 #[test]
 fn test_get_qc_add_with_reduction_and_borrow2() {
-    let a = BigInt::from_slice(&[0, 0, 0, 4]);
-    let b = BigInt::from_slice(&[0, 0, 0, 8]);
+    let mut a = BigInt::from_slice(&[0, 0, 0, 4]);
+    let mut b = BigInt::from_slice(&[0, 0, 0, 8]);
     // Addition: [0,0,0,12]
     let p = BigInt::from_slice(&[1, 0, 1, 9]);
     // Reduction mod p will go as follows:
@@ -253,7 +358,7 @@ fn test_get_qc_add_with_reduction_and_borrow2() {
     // 2^120-1 equals 0xffffffffffffffffffffffffffffff
     // 2^120-2 equals 0xfffffffffffffffffffffffffffffe
 
-    let (q, c) = get_qc_add(a, b, p);
+    let (_, c) = get_qc_add(a, b, p);
     assert_equal(
         c.limbs,
         [
@@ -266,15 +371,3 @@ fn test_get_qc_add_with_reduction_and_borrow2() {
 // Test helpers
 // TODO move to test helpers file / somewhere
 
-fn assert_equal(a: Vec<Field>, b: [Field], len: u32) {
-    assert(a.len() == b.len());
-    for i in 0..len {
-        assert(a.get(i as u64) == b[i]);
-    }
-}
-
-fn print_bigint(a: BigInt, len: u64) {
-    for i in 0..len {
-        println(a.limbs.get(i))
-    }
-}
