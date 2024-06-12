@@ -1,12 +1,14 @@
-use crate::utils::{gt, lt};
-use crate::test_utils::assert_equal;
+use crate::utils::{gt, lt, to_U128};
+use crate::test_utils::{assert_equal, print_bigint};
+use dep::std::field::bn254::decompose;
 
 // BigInt arithmetic
 
 // Number of bits for each limb. With respect to Noir implementation, this
 // represents d.
 global LIMB_BITS: Field = 120;
-global MAX_VALUE_LIMB: Field = 0x100000000000000000000000000000000000000000000000000000000000000000000000000; // The maximum value for a limb is 2^120
+// The maximum value for a limb is 2^120
+global MAX_VALUE_LIMB: Field = 0x100000000000000000000000000000000000000000000000000000000000000000000000000;
 
 // A BigInt is represented in limbs of 120 bits
 // Field has 254 bits
@@ -94,6 +96,11 @@ impl BigInt {
 
         // Returns c as the final result of the addition mod p.
         c
+    }
+
+    fn zero() -> Self {
+        let limbs_vec = Vec::from_slice(&[0]);
+        BigInt { limbs: limbs_vec }
     }
 }
 
@@ -255,6 +262,248 @@ pub fn schoolbook_mult_no_reduction(a: BigInt, b: BigInt) -> BigInt {
     }
 
     BigInt { limbs: res_limbs }
+}
+
+/*
+Returns (q,c) BigInts in radix 120, which fulfills the following equality:
+  a + b = q * p + c
+Note that the limbs of c are not necessarily reduced
+TODO: is this needed?
+
+Inputs: 
+- a,b BigInts mod p with limbs of 120 bits
+- modulus p, BigInt with limbs of 120 bits
+
+Method: Division algorithm in The Art of Computer Programming - Donald Knuth
+4.3.1 Algorithm D
+*/
+pub fn get_qc_mult(a: BigInt, len_a: u64, b: BigInt, len_b: u64, p: BigInt) -> (BigInt, BigInt) {
+    // u = a*b
+    let mut u = schoolbook_mult_no_reduction(a, b);
+    
+    // a*b can have limbs larger than 120 bits
+    // for next steps, the limbs need to fit in U128
+    // so reduce limbs to 128 bits
+    u = reduce_limbs_128(&mut u, len_a+len_b-1);
+
+    assert(u.limbs.len() == (len_a+len_b-1));
+    let len_u = len_a+len_b-1;
+
+    // If u is shorter than p, we can conclude q = 0 and c = a*b
+    if (u.limbs.len() < p.limbs.len()) {
+        (BigInt::zero(), u)
+    }
+
+    println("u limbs len");
+    println(u.limbs.len());
+    for i in 0..3 {
+        println(u.limbs.slice[i]);
+        /*
+      0xc8
+      0x1e
+      0x01
+      */
+    }
+    // We assume p is already in reduced limbs form
+
+    let n = p.limbs.len();
+    // TODO does the algorithm support m = 0?
+    // why yes / no?
+    // TODO fix m
+    let m = len_u - n; //u.limbs.len() - n; // Difference in length
+    
+    let mut q_vec = Vec::new();
+    for _ in 0..m + 1 {
+        q_vec.push(0);
+    }
+
+    // Start Division algorithm
+    // Following the algorithm, v = p.
+    // D1
+
+    // b = 2^120
+    // Can't write this as 1 << 120 because it doesn't fit in a u64.
+    let b: U128 = to_U128(1329227995784915872903807060280344576);
+    // b = floor(b/(v_{n-1}+1))
+    // v_{n-1} is the most significant limb of p
+    // division should be done in the integer, not in the field
+    let temp: U128 = to_U128(p.limbs.get(p.limbs.len() - 1) + 1);
+    // This does division with floor
+    let d: U128 = b / temp;
+
+    for i in 0..len_u {
+        u.limbs.slice[i] = (to_U128(u.limbs.slice[i]) * d).to_integer();
+    }
+    let len_before = u.limbs.len();
+    u = reduce_limbs_128(&mut u, len_u);
+    let len_after = u.limbs.len();
+    // We need an extra digit so u becomes of length m+n
+    if len_after == len_before {
+        println("Add additional 0");
+        u.limbs.insert(len_u, 0);
+    }
+    println("new u length");
+    println(u.limbs.len());
+
+    let mut p_limbs: Vec<Field> = Vec::new();
+    for i in 0..p.limbs.len() {
+      p_limbs.push((to_U128(p.limbs.slice[i])*d).to_integer());
+    }
+
+    // D2
+    // This is safe because we checked length above
+    let mut j = m; //u.limbs.len() - p.limbs.len();
+
+    // Workaround for reverse loop
+    // The result is [q_0,q_1..q_{m}]
+    for _ in 0..m + 1 {
+        println("j");
+        println(j);
+
+        // D3
+        let mut index_1 = n + j;
+        println("index_1");
+        println(index_1);
+        let temp1 = to_U128(u.limbs.get(index_1) + u.limbs.get(index_1 - 1));
+        // U128 has division and modulo operations
+        // this is why u needs to have reduced limbs
+        let mut q_head: U128 = temp1 / to_U128(p_limbs.get(n - 1));
+        let mut r_head: U128 = temp1 % to_U128(p_limbs.get(n - 1));
+        println(q_head);
+        println(r_head);
+
+        // Note: q_head is never more than 2 in error.
+        // Only perform this check if it doesn't trigger out of bound:
+        let mut check2 = false;
+        if n >= 2 & index_1 >= 2 {
+            let temp2 = q_head * to_U128(p_limbs.get(n - 2));
+            let temp3 = b * r_head + to_U128(u.limbs.get(index_1 - 2));
+            check2 = temp2 > temp3;
+        }
+
+        if q_head >= b | check2 {
+            // TODO make this checked_sub
+            q_head -= to_U128(1);
+            r_head += to_U128(p_limbs.get(n - 1));
+            if r_head < b {
+                check2 = false;
+                if n >= 2 & index_1 >= 2 {
+                    let temp2 = q_head * to_U128(p_limbs.get(n - 2));
+                    let temp3 = b * r_head + to_U128(u.limbs.get(index_1 - 2));
+                    check2 = temp2 > temp3;
+                }
+                // let temp2 = q_head * to_U128(p.limbs.get(n - 2));
+                // let temp3 = b * r_head + to_U128(u.limbs.get(index_1 - 2));
+                if q_head >= b | check2 {
+                    // TODO make this checked_sub
+                    q_head -= to_U128(1);
+                    r_head += to_U128(p.limbs.get(n - 1));
+                }
+            }
+        }
+
+        println(q_head);
+
+        // D4
+        // Get [u_j,..,u_{j+n}]
+        let mut u_j_limbs = Vec::new();
+        for i in 0..n + 1 {
+            u_j_limbs.push(u.limbs.get(j + i));
+        }
+        // Calculate [u_j,..,u_{j+n}] - q_head * [p_0,p_1,..,p_{n-1},0]
+        // limbs of p have max 120 bits, so multiplication with q_head will fit with Field
+        let mut q_head_p_limbs = Vec::new();
+        for i in 0..n {
+            q_head_p_limbs.push((to_U128(p_limbs.get(i)) * q_head).to_integer());
+        }
+        q_head_p_limbs.push(0);
+
+        // Returns the updated limbs  
+        let (res_limbs_segment, underflow) = sub_reduced_limbs(u_j_limbs, q_head_p_limbs);
+
+        println(res_limbs_segment.slice[0]);
+        println(res_limbs_segment.slice[1]);
+
+        if underflow {
+            // TODO 
+            // D6
+            println(100);
+        }
+
+        // Set the updated limbs to the correct segment of u
+        for i in 0..n {
+            u.limbs.slice[j+i] = res_limbs_segment.slice[i];
+        }
+
+        // D5
+        q_vec.slice[j] = q_head.to_integer();
+
+        // D7
+        j -= 1;
+    }
+
+    // D8
+    // quotient [q_0,q_1,..,q_m]
+    // remainder [u_0,u_1,..,u_{n-1}] / d
+
+    // TODO check for highest limbs being zero?
+    let res_q = BigInt { limbs: q_vec };
+
+    let mut r_vec = Vec::new();
+    for i in 0..n {
+        r_vec.push((to_U128(u.limbs.slice[i]) / d).to_integer());
+    }
+    let res_r = BigInt { limbs: r_vec };
+
+    (res_q, res_r)
+}
+
+// Reduce the limbs of a BigInt to 128 bits
+// This can return a BigInt with len_a+1 if needed for carrying
+fn reduce_limbs_128(a: &mut BigInt, len_a: u64) -> BigInt {
+    let mut res_limbs = Vec::new();
+    let mut carry = 0;
+    for i in 0..len_a {
+        let (lo, hi) = decompose(a.limbs.get(i));
+        res_limbs.push(lo + carry);
+        carry = hi;
+    }
+    if carry != 0 {
+        res_limbs.push(carry);
+    }
+    BigInt { limbs: res_limbs }
+}
+
+
+#[test]
+fn test_get_qc_mult_simple_division() {
+    // a = 20 + 2^120
+    // array_to_number([20,1])
+    // 1329227995784915872903807060280344596
+    let a = BigInt::from_slice(&[20, 1]);
+    // b = 10 + 2^120
+    // array_to_number([10,1])
+    // 1329227995784915872903807060280344586
+    let b = BigInt::from_slice(&[10, 1]);
+    let p = BigInt::from_slice(&[4]);
+
+
+    // a*b = 
+    // 1766847064778384329583297500742918555704323770423095145235818009702957256
+    let (q, c) = get_qc_mult(a, 2, b, 2, p);
+
+    println("test result");
+    println("q length");
+    println(q.limbs.len());
+    print_bigint(q, 3);
+    println("c length");
+    println(c.limbs.len());
+    print_bigint(c, 1);
+    /*
+    Expected q = 441711766194596082395824375185729638926080942605773786308954502425739314
+    [664613997892457936451903530140172338, 332306998946228968225951765070086151]
+    r = 0
+    */
 }
 
 /*

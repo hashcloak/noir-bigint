@@ -12,6 +12,21 @@ array_to_number(limbs) = {
     num;
 }
 ```
+The inverse (careful with this, sometimes we don't reduce):
+```
+number_to_array(num) = {
+    my(limbs = []);
+    my(base = 2^120);
+    
+    while (num > 0,
+        my(limb = num % base);
+        limbs = concat(limbs, limb);
+        num = num \ base;
+    );
+    
+    limbs;
+}
+```
 
 If you have coefficient array `[1, 2, 3, 4]`, this equals the number `1+ 2*2^120 + 3*2^240 + 4*2^360`. 
 Print:
