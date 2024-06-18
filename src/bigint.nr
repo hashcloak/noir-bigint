@@ -662,12 +662,6 @@ pub fn get_qc_mult(a: BigInt, len_a: u64, b: BigInt, len_b: u64, p: BigInt) -> (
     // u = a*b
     let mut u = schoolbook_mult_no_reduction(a, b);
 
-    println("u limbs len & the content");
-    println(u.limbs.len());
-    for i in 0..u.limbs.len() {
-        println(u.limbs.slice[i]);
-    }
-
     // assert(u.limbs.len() == (len_a + len_b - 1)); TODO
     let len_u = len_a + len_b - 1;
 
@@ -703,12 +697,8 @@ pub fn get_qc_mult(a: BigInt, len_a: u64, b: BigInt, len_b: u64, p: BigInt) -> (
       }
       coeffs_u_radix60.push(high_field);
     }
-    // len coeffs_u_radix60 is 2*5 = 10
-    println("Is len of u 10?");// Yes
-    println(coeffs_u_radix60.len());
 
     // switch p to radix-60
-    // p had length 2
     let mut coeffs_p_radix60: Vec<Field> = Vec::new();
     for i in 0..p.limbs.len() {
       // This is like 128 bits
@@ -740,11 +730,7 @@ pub fn get_qc_mult(a: BigInt, len_a: u64, b: BigInt, len_b: u64, p: BigInt) -> (
       coeffs_p_radix60.push(high_field);
     }
 
-    // in radix-60 p has length 2*2 = 4
-
-    println("coeffs_p_radix60.len() before stripping it from zeroes");
-    println(coeffs_p_radix60.len());
-    let len_p = 4; // FIXME
+    let len_p = coeffs_p_radix60.len();
     // Chop off the top bytes that are 0 for p
     let mut stop = false;
     for i in 0..len_p-1 {
@@ -758,149 +744,72 @@ pub fn get_qc_mult(a: BigInt, len_a: u64, b: BigInt, len_b: u64, p: BigInt) -> (
       }
     }
 
-    // most significant coeff of p was 0, so resulting vec is of length 3
-    println("print p");
-    for i in 0..3 {
-      println(coeffs_p_radix60.slice[i]);
-    }
-
     // If u is shorter than p, we can conclude q = 0 and c = a*b
     // TODO uncomment
     // if (u.limbs.len() < p.limbs.len()) {
     //     (BigInt::zero(), u)
     // }
 
-    println("u limbs len");
-    let len_u = coeffs_u_radix60.len(); // todo is this allowed
-    println(coeffs_u_radix60.len());
-    for i in 0..10 {
-        println(coeffs_u_radix60.slice[i]);
-    }
-
+    let len_u = coeffs_u_radix60.len();
     let n = coeffs_p_radix60.len();
 
     // Start Division algorithm
     // Following the algorithm, v = p.
     // D1
 
-    // b = 2^60 // TODO
+    // b = 2^60
     let b = to_U128(1152921504606846976);
     // d = floor(b/(v_{n-1}+1))
     // v_{n-1} is the most significant limb of p
-    // division should be done in the integer, not in the field
-    // TODO
     
     let temp: U128 = to_U128(coeffs_p_radix60.get(coeffs_p_radix60.len() - 1) + 1);
     // This does division with floor
     let d_u128: U128 = b / temp;
     let d: Field = d_u128.to_integer();
 
-    for i in 0..10 { // FIXME flexible length
+    for i in 0..coeffs_u_radix60.len() {
         // This won't overflow because limbs are 60 bits
         coeffs_u_radix60.slice[i] = coeffs_u_radix60.slice[i] * d;
     }
     let len_before = coeffs_u_radix60.len();
 
     // this won't make u longer so length is still 10
-    let mut u = reduce_limbs_60bits(coeffs_u_radix60, 10);// FIXME send length
+    let mut u = reduce_limbs_60bits(coeffs_u_radix60, len_before);
     let len_after = u.len();
     // We need an extra digit so u becomes of length m+n
     if len_after == len_before {
-        println("Add additional 0");
         u.insert(len_u, 0);
     }
 
-    // now length u is 11
-
-    println("new u length");
-    println(u.len());
-    for i in 0..11 {
-      println(u.slice[i]);
-    }
-
     let mut p_limbs: Vec<Field> = Vec::new();
-    for i in 0..3 {//FIXME coeffs_p_radix60.len()
+    for i in 0..coeffs_p_radix60.len() {
         p_limbs.push(coeffs_p_radix60.slice[i] * d);
     }
-    p_limbs = reduce_limbs_60bits(p_limbs, 3); // FIXME flexible len
+    p_limbs = reduce_limbs_60bits(p_limbs, p_limbs.len());
 
     // D2
-    let m = 10-3;//FIXME u.len() - p_limbs.len(); // 10-3 because the last zero is extra
+    let m = len_before - p_limbs.len(); // The last added zero is extra
 
+    let looplen = m+1;
     let mut q_vec = Vec::new();
-    for _ in 0..(m+1) {//FIXME m+1
+    for _ in 0..8 {//FIXME this end range should be m+1
         q_vec.push(0);
     }
 
     let mut j = m;
-
+    let looplen = m+1;
     // Workaround for reverse loop
     // The result is [q_0,q_1..q_{m}]
-    for _ in 0..(m+1) {//TODO FIX LOOP LENGTH m+1
-        println("j");
-        println(j);
-
+    for _ in 0..8 {//FIXME this end range should be m+1
         // D3
         let mut index_1 = n + j;
-        println("index_1");
-        println(index_1);
-        println("u.limbs.get(index_1)");
-        // TODO
-        println(u.get(index_1)); // 0x333333333333333333333333333333
-        // 265845599156983174580761412056068915 = d
 
-// TODO
-        println("u.limbs.get(index_1-1)");
-        println(u.get(index_1 - 1));
-        // second run: 0x05fffffffffffffffffffffffffffffa
-        // 7975367974709495237422842361682067450 = 30d
-
-        println("d");
-        println(d); // 0x333333333333333333333333333333
-        // TODO now this can overflow:
-        // d^2 + 30d
-
-        // https://github.com/noir-lang/noir/blob/1849389362e22e8236177f84b735dadf840cd637/noir_stdlib/src/bigint.nr
-
-        println("u.get(index_1) * b");
-        println(u.get(index_1) * b.to_integer());
         // u.get(index_1) * d can be larger than 60 bits
         let u_j_n = U256::from_le_bytes((u.get(index_1) * b.to_integer()).to_le_bytes(32).as_array());
-        println("u_j_n");
-        println(u_j_n);  //correct
-        // 110862104909136318716760728009667146038219704695616504944106020124834985      
-        // should be: 
-        // 70673882591135373183331900029716740526761116212231488492559683229277225
-        
-        // This one is fine. 
-        // TODO
         let u_j_n_sub_1 = U256::from_le_bytes((u.get(index_1 - 1)).to_le_bytes(32).as_array());
-        println("u_j_n_sub_1");
-        println(u_j_n_sub_1);//correct
-        // This has to be U256 addition to prevent overflow
-        let temp1 = u_j_n + u_j_n_sub_1;
-        println("temp1");
-        println(temp1);//correct
-
-        // U128 has division and modulo operations
-        // this is why u needs to have reduced limbs
-        println("p_limbs.get(n - 1)");
-        println(p_limbs.get(n - 1));
-        //0x0ccccccccccccccc equals 4d
-        
+        let temp1 = u_j_n + u_j_n_sub_1;        
         let p_bigint = U256::from_le_bytes(p_limbs.get(n - 1).to_le_bytes(32).as_array());
-        println("START DIVISION");
-        println(temp1);
-        println(p_bigint);
         let mut (q_head, r_head) = bigint_mod(temp1, p_bigint);
-        println("q_head, r_head");
-        // This is incorrect
-        println(q_head); // 0xcccccccccccccc
-        println(r_head); // 0x0999999999999999
-        // q,r are correct!!!
-
-        // equals 265845599156983174580761412056068915
-        // in hex: 0x333333333333333333333333333333
 
         // Note: q_head is never more than 2 in error.
         // Only perform this check if it doesn't trigger out of bound:
@@ -910,7 +819,6 @@ pub fn get_qc_mult(a: BigInt, len_a: u64, b: BigInt, len_b: u64, p: BigInt) -> (
         let mut check2 = false;
         if n >= 2 & index_1 >= 2 {
             let temp2 = q_head * to_U128(p_limbs.get(n - 2));
-            // TODO
             let temp3 = b * r_head + to_U128(u.get(index_1 - 2));
             check2 = temp2 > temp3;
         }
@@ -927,8 +835,6 @@ pub fn get_qc_mult(a: BigInt, len_a: u64, b: BigInt, len_b: u64, p: BigInt) -> (
                     let temp3 = b * r_head + to_U128(u.get(index_1 - 2));
                     check2 = temp2 > temp3;
                 }
-                // let temp2 = q_head * to_U128(p.limbs.get(n - 2));
-                // let temp3 = b * r_head + to_U128(u.limbs.get(index_1 - 2));
                 if q_head >= b | check2 {
                     // TODO make this checked_sub
                     q_head -= to_U128(1);
@@ -937,64 +843,28 @@ pub fn get_qc_mult(a: BigInt, len_a: u64, b: BigInt, len_b: u64, p: BigInt) -> (
             }
         }
 
-        println(q_head);
-
-        // Gets till here
-
         // D4
         if q_head.to_integer() != 0 {
             // Get [u_j,..,u_{j+n}]
             let mut u_j_limbs = Vec::new();
-            for i in 0..4 {//FIXME n+1
-              //TODO
+            for i in 0..(n+1) {
                 u_j_limbs.push(u.get(j + i));
             }
             // Calculate [u_j,..,u_{j+n}] - q_head * [p_0,p_1,..,p_{n-1},0]
-            // limbs of p have max 120 bits, so multiplication with q_head will fit with Field
+            // limbs of p have max 60 bits, so multiplication with q_head will fit with Field
             let mut q_head_p_limbs = Vec::new();
 
-            for i in 0..3 {//FIXME 1=n
+            for i in 0..n {
                 // This calculation has to be done with enough space (Field)
                 // p[n-1] can have 60+60=120 bits
                 q_head_p_limbs.push(p_limbs.get(i) * q_head.to_integer());
             }
             q_head_p_limbs.push(0);
-            println("q_head_p_limbs before reduction");
-            for i in 0..4 {
-              println(q_head_p_limbs.slice[i]);
-            }
 
-            // reduce back to 60 bits
-            // TODO make flexible length?
-            // here it goes wrong
-            q_head_p_limbs = reduce_limbs_60bits(q_head_p_limbs, 4);
+            // reduce limbs back to 60 bits
+            q_head_p_limbs = reduce_limbs_60bits(q_head_p_limbs, q_head_p_limbs.len());
 
-
-            println("u limbs before");
-            for i in 0..11 {
-              println(u.slice[i]);
-            }
-            println("u_j_limbs");
-            for i in 0..4 {
-              println(u_j_limbs.slice[i]);
-            }
-            println("q_head_p_limbs");
-            // TODO make flexible length?
-            for i in 0..4 {
-              println(q_head_p_limbs.slice[i]);
-            }
-            // Returns the updated limbs  
-            // FIXME 2 = n+1
-            // subtracting the q*p segment goes wrong. Calculating q,r is OK.
-            // FIXME subtraction is not well defined, because the limbs are not in reduced radix-60 form
-            // while the representation is radix-60, the coefficients itself can be much larger
-            // this is an issue for subtraction. How to handle this?
-            let (res_limbs_segment, underflow) = sub_reduced_limbs_fields(u_j_limbs, 4, q_head_p_limbs);
-
-            println("res_limbs_segment");
-            for i in 0..res_limbs_segment.len() {
-              println(res_limbs_segment.slice[i]);
-            }
+            let (res_limbs_segment, underflow) = sub_reduced_limbs_fields(u_j_limbs, n+1, q_head_p_limbs);
 
             if underflow {
                 // TODO 
@@ -1003,14 +873,8 @@ pub fn get_qc_mult(a: BigInt, len_a: u64, b: BigInt, len_b: u64, p: BigInt) -> (
             }
 
             // Set the updated limbs to the correct segment of u
-            for i in 0..res_limbs_segment.len() {//FIXME 1=n
-              // TODO
+            for i in 0..res_limbs_segment.len() {
                 u.slice[j+i] = res_limbs_segment.slice[i];
-            }
-
-            println("coeffs_u_radix60 limbs after");
-            for i in 0..11 {
-              println(u.slice[i]);
             }
         }
 
@@ -1025,16 +889,10 @@ pub fn get_qc_mult(a: BigInt, len_a: u64, b: BigInt, len_b: u64, p: BigInt) -> (
     // quotient [q_0,q_1,..,q_m]
     // remainder [u_0,u_1,..,u_{n-1}] / d
 
-    // TODO check for highest limbs being zero?
     let res_q = BigInt { limbs: q_vec };
 
-    // TODO at this point the current testcase still has
-    // u = [0, 2d, 2]. This shouldn't be happening because
-    // the quotient is smaller
-
     let mut r_vec = Vec::new();
-    for i in 0..1 {//FIXME 1 = n
-      //TODO
+    for i in 0..n {
         r_vec.push((to_U128(u.slice[i]) / d_u128).to_integer());
     }
     let res_r = BigInt { limbs: r_vec };
@@ -1091,12 +949,7 @@ fn reduce_limbs_60bits(limbs: Vec<Field>, len: u64) -> Vec<Field> {
     // and the carries for the next fields
     // A field has 254 bits so we can do additions without problem
     res.slice[i] = current_field;
-    // println("current field, carry 1&2");
-    // i=2, i+1=3, i+2=4
-    // res.len() = 4
-    // println(current_field);
-    // println(carry1_field);
-    // println(carry2_field);
+
     // The the carries might fall outside of the original length of the array
     if (i+1) == res.len() {
       if carry2_field != 0 {
@@ -1107,10 +960,7 @@ fn reduce_limbs_60bits(limbs: Vec<Field>, len: u64) -> Vec<Field> {
       }
       
     } else if (i+2) == res.len() {
-      // println("case");
-      // println(res.slice[i+1]);
       res.slice[i+1] += carry1_field;
-      // println(res.slice[i+1]);
       if carry2_field != 0 {
         res.push(carry2_field);
       }
@@ -1125,7 +975,6 @@ fn reduce_limbs_60bits(limbs: Vec<Field>, len: u64) -> Vec<Field> {
   // Only necessary if the previous reductions steps have resulted
   // in increasing the res vector
 
-//this is not the issue
   if (len != res.len()) {
     let bits_coeff_len1 = res.slice[len].to_le_bits(61);
     // Reduce if needed
