@@ -1,0 +1,7 @@
+Noir Bigint
+Copyright 2024 HashCloak
+
+This product includes software developed at HashCloak.
+
+The main part of the bignum arithmetic was copied from https://github.com/zac-williamson/noir-bignum.
+Copyright 2024 Zac Williamson. 
