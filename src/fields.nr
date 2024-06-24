@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod u60_representation;
-mod split_bits;
-mod arrayX;
-mod u60_representation_test;
+mod bn254Fq;
+
+use crate::BigNum;
+use crate::fields::bn254Fq::BNParams;
+
+// example typedef when using a defined bignum instance
+type Fq = BigNum<3, BNParams>;

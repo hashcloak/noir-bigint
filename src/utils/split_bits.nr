@@ -10,7 +10,7 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the License.
+// limitations under the License
 
 // Decomposes a single field into two 120 bit fields and a carry
 unconstrained pub fn split_120_bits(x: Field) -> (Field, Field) {
@@ -19,7 +19,7 @@ unconstrained pub fn split_120_bits(x: Field) -> (Field, Field) {
     let mut low: Field = 0;
     let mut high: Field = 0;
 
-    comptime let offsets: [Field; 16] = [
+    let offsets: [Field; 16] = [
         1, 0x100, 0x10000, 0x1000000, 0x100000000, 0x10000000000, 0x1000000000000, 0x100000000000000, 0x10000000000000000, 0x1000000000000000000, 0x100000000000000000000, 0x10000000000000000000000, 0x1000000000000000000000000, 0x100000000000000000000000000, 0x10000000000000000000000000000, 0x1000000000000000000000000000000
     ];
 
@@ -43,7 +43,7 @@ unconstrained pub fn split_60_bits(x: Field) -> (u64, u64) {
     let mut low: u64 = 0;
     let mut high: u64 = 0;
 
-    comptime let offsets: [u64; 8] = [1, 0x100, 0x10000, 0x1000000, 0x100000000, 0x10000000000, 0x1000000000000, 0x100000000000000];
+    let offsets: [u64; 8] = [1, 0x100, 0x10000, 0x1000000, 0x100000000, 0x10000000000, 0x1000000000000, 0x100000000000000];
     for i in 0..8 {
         low += (x_bytes[i] as u64) * offsets[i];
         high += (x_bytes[i + 8] as u64) * offsets[i];
