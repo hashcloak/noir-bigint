@@ -68,10 +68,25 @@ There are some methods of interest in this representation:
 
 Using the above methods, the strategy consists of taking big integers in the 120-bit representation and converting them into a 60-bit representation. Then, we perform the additions or subtractions in this reduced representation, and we transform the resulting big integer back to the 120-bit representation to continue with the rest of the circuit. It is important to consider that most of the methods of `U60Repr` are executed using unconstrained functions to avoid the overhead that comes from using `u64` data types and comparing them.
 
-## Addition
+## Modular arithmetic in ZK
 
+First, let us remind the goal at hand. In the context of ZK-proofs, a prover wants to prove that he knows $a, b \in \mathbb{Z}_p$ such that $c = a \odot b \mod p$, for some $c \in \mathbb{Z}_p$, and $\odot \in \{+, \times \}$. The strategy that we will consider in the implmenetation is to compute $q, c \in \mathbb{Z}$ such that $a \odot b = p \cdot q + c$, for $c < p$, using Noir unconstrained functions. The unconstrained functions allow us to compute intermediate witnesses that are not constrained by the proof, and therefore, cheap to compute. Once we have computed $q$ and $c$, we constrain them to the condition $a \odot b - p \cdot q - c = 0$ to prove that $c$ is the reduction modulo $p$ that we are looking for. In the implementation, we do the constraining in a more general way considering not just the case of the addition and multiplication modulo $p$ but for an arbitrary quadratic expression. We will cover this ideas in deep later.
 
-## Multiplication
+### Constraining quadratic expressions
+
+One of the most important parts of the algorithm is constraining to the condition $a \odot b - p \cdot q - c = 0$, for some $q, c \in \mathbb{Z}$ such that $c < p$. In the implementation, we generalize this check to more general quadratic expressions. Our goal is to constrain the following quadratic expression:
+
+$$
+\sum_{i=0}^{N_P - 1} \left(\sum_{j=0}^{N_L-1} L[i][j] \cdot \sum_{j=0}^{N_R-1} R[i][j] \right) + \sum_{i=0}^{N_A - 1} A[i] = q \cdot p
+$$.
+
+Here
+- $N_P$ is the number of products that will be computed.
+- $N_L
+
+### Addition
+
+### Multiplication
 
 ### Schoolbook multiplication
 
