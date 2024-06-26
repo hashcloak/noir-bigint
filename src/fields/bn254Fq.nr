@@ -14,6 +14,8 @@
 
 use crate::BigNum;
 use crate::BigNumParamsTrait;
+use crate::mul::schoolbook_mult;
+use crate::utils::arrayX::ArrayX;
 
 struct BNParams {}
 impl BigNumParamsTrait<3> for BNParams {
@@ -37,5 +39,9 @@ impl BigNumParamsTrait<3> for BNParams {
     }
     fn modulus_bits() -> u64 {
         254
+    }
+
+    fn mult(a: [Field; 3], b: [Field; 3]) -> ArrayX<Field, 3, 2> {
+        schoolbook_mult(a,b)
     }
 }

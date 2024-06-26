@@ -18,6 +18,7 @@ use crate::BigNumParamsTrait;
 use crate::BNExpressionInput;
 use crate::utils::u60_representation::U60Repr;
 use crate::fields::bn254Fq::BNParams as BNParams;
+use crate::mul::karatsuba_mult_18;
 
 struct Test2048Params {}
 impl BigNumParamsTrait<18> for Test2048Params {
@@ -86,6 +87,10 @@ impl BigNumParamsTrait<18> for Test2048Params {
     }
     fn modulus_bits() -> u64 {
         2048
+    }
+
+    fn mult(a: [Field; 18], b: [Field; 18]) -> ArrayX<Field, 18, 2> {
+        karatsuba_mult_18(a,b)
     }
 }
 

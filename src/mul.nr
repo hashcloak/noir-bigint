@@ -4,133 +4,153 @@ use crate::bignum_test::{Fq, Fqq};
 use crate::fields::bn254Fq::BNParams as BNParams;
 use crate::BigNumParamsTrait;
 
-// Simple schoolbook multiplication without any reduction
-fn schoolbook_mult<N>(a: [Field; N], b: [Field; N]) -> ArrayX<Field, N, 2> {
-  let mut res = ArrayX { segments: [[0;N], [0; N]] };
-  for i in 0..N {
-    for j in 0..N {
-      res.add_assign(i+j, a[i] * b[j]);
+/**
+  * @brief schoolbook multiplication of 2 N-length arrays, no reductions
+  **/
+pub fn schoolbook_mult<N>(a: [Field; N], b: [Field; N]) -> ArrayX<Field, N, 2> {
+    let mut res = ArrayX { segments: [[0;N], [0; N]] };
+    for i in 0..N {
+        for j in 0..N {
+            res.add_assign(i+j, a[i] * b[j]);
+        }
     }
-  }
-  res
+    res
 }
 
-// Simple addition of limbs without any reduction
+/**
+  * @brief simple addition of limbs of 2 N-length arrays, no reductions
+  **/
 fn add_arrays<N>(a: [Field; N], b: [Field; N]) -> [Field;N] {
-  let mut res = [0;N];
-  for i in 0..N {
-    res[i] = a[i]+b[i];
-  }
-  res
-}
-
-// Simple subtraction of limbs without any reduction
-// Note; this doesn't take care of underflow of certain limbs
-fn subtract_arrays<N>(a: ArrayX<Field, N, 2>, b: ArrayX<Field, N, 2>, c: ArrayX<Field, N, 2>) -> ArrayX<Field, N, 2> {
-  let mut res = ArrayX { segments: [[0;N], [0; N]] };
-  for i in 0..2 {
-    for j in 0..N {
-      res.segments[i][j] = a.segments[i][j] - b.segments[i][j] - c.segments[i][j]; 
+    let mut res = [0;N];
+    for i in 0..N {
+        res[i] = a[i]+b[i];
     }
-  }
-  res
+    res
 }
 
-// Karatsuba multiplication fixed for 9 limbs
-// the limbs have max 120 bits
-fn karatsuba_mult_9(a: [Field; 9], b: [Field; 9]) -> ArrayX<Field, 9, 2> {
-  // a = [a_lo, a_hi], b = [b_lo, b_hi]
-  // r0 = a_lo * b_lo
-  // r2 = a_hi * b_hi
-  // r1 = (a_lo+a_hi)(b_lo+b_hi) - r0 - r2
-  //    = a_lo*b_lo + a_lo*b_hi + a_hi*b_lo + a_hi*b_hi - a_lo*b_lo - a_hi*b_hi
-  //    = a_lo*b_hi + a_hi*b_lo
-  // r0 -> low terms, r1 -> middle terms, r2 -> high terms
-  // c = [r0_lo, r0_hi + r1_lo, r1_hi + r2_lo, r2_hi]
+/**
+  * @brief simple subtraction of limbs of 2 N-length arrays, no reductions
+  * @description This directly subtracts a[i]-b[i]-c[i] for all N limbs,
+  *              thus some limbs might have a "negative" value which has wrapped
+  *              around in the Field type.
+  **/
+fn subtract_arrays<N>(a: ArrayX<Field, N, 2>, b: ArrayX<Field, N, 2>, c: ArrayX<Field, N, 2>) -> ArrayX<Field, N, 2> {
+    let mut res = ArrayX { segments: [[0;N], [0; N]] };
+    for i in 0..2 {
+        for j in 0..N {
+            res.segments[i][j] = a.segments[i][j] - b.segments[i][j] - c.segments[i][j]; 
+        }
+    }
+    res
+}
 
-  // Fill 4 "lo" elements, but in a len 5 array
-  // We work with the same type for consequent functions
-  let mut a_lo = [0;5];
-  let mut a_hi = [0;5];
-  let mut b_lo = [0;5];
-  let mut b_hi = [0;5];
+/**
+  * @brief For karatsuba multiplication, returns values r0, r1, r2
+  *        which represent the lower, (overlapping) middle and higher limbs of the result
+  * @description: this computes for a, b, split in the middle as a = [a_lo, a_hi], b = [b_lo, b_hi]:
+  *               (If the length is odd, the lower half is 1 smaller than the higher half)
+  *               r0 = a_lo * b_lo
+  *               r2 = a_hi * b_hi
+  *               r1 = a_lo*b_hi + a_hi*b_lo
+  * @param a: input byte array, length N
+  * @param b: input byte array, length N
+  * @param odd: bool whether N is odd
+  * 
+  * Note that M is the length of the larger half. This needs to be a numeric generic, in order
+  * to create an array of that length that will be accepted by the compiler
+  **/
+fn get_r012_karatsuba<N, M>(a: [Field; N], b: [Field; N], odd: bool) -> (ArrayX<Field, M, 2>, ArrayX<Field, M, 2>, ArrayX<Field, M, 2>) {
+    // Initialize lo/hi arrays of same length, even if the lower half is shorter
+    // this is for consequent functions
+    // a = [a_lo, a_hi], b = [b_lo, b_hi]
+    let mut a_lo = [0;M];
+    let mut a_hi = [0;M];
+    let mut b_lo = [0;M];
+    let mut b_hi = [0;M];
 
-  for i in 0..4 {
-    a_lo[i] = a[i];
-    b_lo[i] = b[i];
-  }
-  for i in 4..9 {
-    a_hi[i-4] = a[i];
-    b_hi[i-4] = b[i];
-  }
+    let mut len_lo = M;
+    if odd {
+      len_lo -= 1; 
+    }
+    for i in 0..len_lo {
+      a_lo[i] = a[i];
+      b_lo[i] = b[i];
+    }
+    for i in len_lo..N {
+      a_hi[i-len_lo] = a[i];
+      b_hi[i-len_lo] = b[i];
+    }
 
-  // r0, r1, r2 are all of the same type for next operations
-  // r0 has 7 limbs filled
-  let r0: ArrayX<Field, 5, 2> = schoolbook_mult(a_lo, b_lo);
-  // r2 has 9 limbs filled
-  let r2: ArrayX<Field, 5, 2> = schoolbook_mult(a_hi, b_hi);
-  let added_a = add_arrays(a_lo, a_hi);
-  let added_b = add_arrays(b_lo, b_hi);
-  // r2 has 9 limbs filled
-  let mut r1: ArrayX<Field, 5, 2> = schoolbook_mult(added_a, added_b);
-  // we know that r1-r0-r2 >= 0 so this subtraction is possible
-  // but individual limbs might become negative, however, when adding
-  // result together they become positive again
-  r1 = subtract_arrays(r1, r0, r2);
+    // The following is calculated:
+    // r0 = a_lo * b_lo
+    // r2 = a_hi * b_hi
+    // r1 = (a_lo+a_hi)(b_lo+b_hi) - r0 - r2
+    //    = a_lo*b_lo + a_lo*b_hi + a_hi*b_lo + a_hi*b_hi - a_lo*b_lo - a_hi*b_hi
+    //    = a_lo*b_hi + a_hi*b_lo
 
-  // Result has 18 limbs, of which the last will be 0
-  let mut res = ArrayX { segments: [[0;9], [0;9]] };
-  
-  // r0 -> low terms, r1 -> middle terms, r2 -> high terms
-  // c = [r0_lo, r0_hi + r1_lo, r1_hi + r2_lo, r2_hi]
-  for i in 0..9 {
-      // Low part
+    // a_lo, b_lo, a_hi, b_hi have (M of M-1) limbs of 120 bits
+    // r0, r2 have 2M-1 limbs of 240+log(2M-1) bits
+    let r0: ArrayX<Field, M, 2> = schoolbook_mult(a_lo, b_lo);
+    let r2: ArrayX<Field, M, 2> = schoolbook_mult(a_hi, b_hi);
+
+    // added_a, added_b have (M of M-1) limbs of 121 bits
+    let added_a = add_arrays(a_lo, a_hi);
+    let added_b = add_arrays(b_lo, b_hi);
+    // r1 has 2M-1 limbs of 242+log(2M-1) bits
+    let mut r1: ArrayX<Field, M, 2> = schoolbook_mult(added_a, added_b);
+    // This subtraction gives no issues if used in combination with combining these results as follows:
+    // [r0_lo, r0_hi + r1_lo, r1_hi + r2_lo, r2_hi]
+    // because all limbs will be positive, even if in intermediate value r1 there may be "negative" values
+    r1 = subtract_arrays(r1, r0, r2);  
+
+    (r0, r1, r2)
+}
+
+/**
+  * @brief For karatsuba multiplication, correctly combines values r0, r1, r2 into the result
+  * @description: r0 are the lower limbs, r2 the higher limbs, and r1 the "middle limbs"
+  *               that overlap partially with both lower & higher parts
+  *
+  * @param r0: 2 arrays of length M, contains value a_lo * b_lo
+  * @param r1: 2 arrays of length M, contains value a_lo*b_hi + a_hi*b_lo
+  * @param r2: 2 arrays of length M, contains value a_hi * b_hi
+  **/
+fn combine_res_karatsuba<N, M>(r0: ArrayX<Field, M, 2>, r1: ArrayX<Field, M, 2>, r2: ArrayX<Field, M, 2>, odd: bool) -> ArrayX<Field, N, 2> {
+    // Result has 2*N limbs, of which the last will be 0
+    let mut res = ArrayX { segments: [[0;N], [0;N]] };
+    
+    let mut len_lo = M; 
+    if odd {
+      len_lo -= 1;
+    }
+    
+    // r0 -> low terms, r1 -> middle terms, r2 -> high terms
+    // res = [r0_lo, r0_hi + r1_lo, r1_hi + r2_lo, r2_hi]
+    for i in 0..N {
       res.add_assign(i, r0.get(i));
-      // Overlapping part
-      res.add_assign(i+4, r1.get(i));
-      // High part
-      res.add_assign(i+8, r2.get(i));
-  }
-  res
+      res.add_assign(i+len_lo, r1.get(i));
+      res.add_assign(i+len_lo+len_lo, r2.get(i));
+    }
+    res
 }
 
-// Karatsuba multiplication fixed for 18 limbs
-// the limbs have max 120 bits
-fn karatsuba_mult_18(a: [Field; 18], b: [Field; 18]) -> ArrayX<Field, 18, 2> {
-  let mut a_lo = [0;9];
-  let mut a_hi = [0;9];
-  let mut b_lo = [0;9];
-  let mut b_hi = [0;9];
+/**
+  * @brief Karatsuba multiplication fixed for 9 limbs
+  * @description This 1 level Karatsuba, the next level does schoolbook mult
+  **/
+pub fn karatsuba_mult_9(a: [Field; 9], b: [Field; 9]) -> ArrayX<Field, 9, 2> {
+    let (r0, r1, r2): (ArrayX<Field, 5, 2>, ArrayX<Field, 5, 2>, ArrayX<Field, 5, 2>) = get_r012_karatsuba(a, b, true); 
+    combine_res_karatsuba(r0, r1, r2, true)
+}
 
-  for i in 0..9 {
-    a_lo[i] = a[i];
-    b_lo[i] = b[i];
-  }
-  for i in 9..18 {
-    a_hi[i-9] = a[i];
-    b_hi[i-9] = b[i];
-  }
-
-  // a_lo, a_lo have 9 limbs of 120 bits
-  // r0, r2 have 17 limbs of 240+log(17) bits
-  let r0: ArrayX<Field, 9, 2> = karatsuba_mult_9(a_lo, b_lo);
-  let r2: ArrayX<Field, 9, 2> = karatsuba_mult_9(a_hi, b_hi);
-
-  // added_a, added_b have 9 limbs of 121 bits
-  let added_a = add_arrays(a_lo, a_hi);
-  let added_b = add_arrays(b_lo, b_hi);
-  // r1 has 17 limbs of 242+log(17) bits
-  let mut r1: ArrayX<Field, 9, 2> = karatsuba_mult_9(added_a, added_b);
-  r1 = subtract_arrays(r1, r0, r2);
-
-  let mut res = ArrayX { segments: [[0;18], [0;18]] };
-  
-  for i in 0..17 {
-    res.add_assign(i, r0.get(i));
-    res.add_assign(i+9, r1.get(i));
-    res.add_assign(i+18, r2.get(i));
-  }
-  res
+/**
+  * @brief Karatsuba multiplication fixed for 18 limbs
+  * @description This 1 level Karatsuba, the next level does schoolbook mult
+  * TODO double check 1 level Karatsube here is indeed more efficient (first comparison showed this to be true)
+  **/
+pub fn karatsuba_mult_18(a: [Field; 18], b: [Field; 18]) -> ArrayX<Field, 18, 2> {
+    let (r0, r1, r2): (ArrayX<Field, 9, 2>, ArrayX<Field, 9, 2>, ArrayX<Field, 9, 2>) = get_r012_karatsuba(a, b, false); 
+    combine_res_karatsuba(r0, r1, r2, false)
 }
 
 struct Test1080Params {}
@@ -171,11 +191,17 @@ impl BigNumParamsTrait<9> for Test1080Params {
         0x00000000000000000000000000000000001e7a804e8eacfe3a2a5673bc3885b8,
         0x0000000000000000000000000000000000eabadeae4282906c817adf70eab4ae
     ]}
+
     fn k() -> u64 {
         1080
     }
+
     fn modulus_bits() -> u64 {
         1080
+    }
+
+    fn mult(a: [Field; 9], b: [Field; 9]) -> ArrayX<Field, 9, 2> {
+        karatsuba_mult_9(a,b)
     }
 }
 

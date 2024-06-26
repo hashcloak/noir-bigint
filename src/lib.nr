@@ -11,10 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+// With changes from HashCloak
 
 mod utils;
 mod bignum_test;
 mod fields;
+mod mul;
 
 use dep::std;
 use crate::utils::u60_representation::U60Repr;
@@ -30,22 +32,31 @@ trait BigNumParamsTrait<N> {
      * @brief modulus: all BigNum operations are evaluated modulo this value
      **/
     fn modulus() -> [Field; N];
+
     /**
      * @brief double_modulus: used when performing negations and subtractions
      **/
     fn double_modulus() -> [Field; N];
+
     /**
      * @brief redc_param used for __barrett_reduction. See https://en.wikipedia.org/wiki/Barrett_reduction
      **/
     fn redc_param() -> [Field; N];
+
     /**
      * @brief k used for __barrett_reduction. Should be at least modulus_bits() + 1
      **/
     fn k() -> u64;
+
     /**
      * @brief modulus_bits = log2(modulus) rounded up
      **/
     fn modulus_bits() -> u64;
+
+    /**
+     * @brief efficient multiplication of 2 N-length arrays. To use in constrained fn
+     **/
+    fn mult(a: [Field; N], b: [Field; N]) -> ArrayX<Field, N, 2>;
 }
 
 /**
@@ -55,7 +66,8 @@ trait BigNumParamsTrait<N> {
 struct BNExpressionInput<N, Params> {
     value: BigNum<N, Params>,
     is_negative: bool,
- }
+}
+
 impl<N, Params> BNExpressionInput<N, Params> {
     fn new(input: BigNum<N, Params>, _is_negative: bool) -> Self {
         BNExpressionInput { value: input, is_negative: _is_negative }
@@ -651,21 +663,21 @@ impl<N, Params> BigNum<N, Params> {
 
         // Compute the product t0 * t1 + t2 * t3 + t4 - Quotient * Modulus
         let modulus: [Field; N] = Params::modulus();
+
+        // Products
+        for k in 0..NUM_PRODUCTS {
+          let mult_res = Params::mult(t0[k], t1[k]);
+          for i in 0..N+N-1 {
+            product_limbs.add_assign(i, mult_res.get(i));
+          }
+        }
+
+        let product_q_p = Params::mult(quotient.limbs, modulus);
+        for i in 0..N+N-1 {
+            product_limbs.sub_assign(i, product_q_p.get(i));
+        }
+
         for i in 0..N {
-            for j in 0..N {
-                for k in 0..NUM_PRODUCTS {
-                    if k == 0 {
-                        let new_term = t0[k][i] * t1[k][j] - quotient.limbs[i] * modulus[j];
-                        std::as_witness(new_term); // width-4 optimization (n.b. might not be optimal if t2, t3 input arrays are nonzero)
-                        product_limbs.add_assign(i + j, new_term);
-                    } else {
-                        product_limbs.add_assign(i + j, t0[k][i] * t1[k][j]);
-                    }
-                }
-                if (NUM_PRODUCTS == 0) {
-                    product_limbs.sub_assign(i + j, quotient.limbs[i] * modulus[j]);
-                }
-            }
             product_limbs.add_assign(i, t4[i]);
         }
 
