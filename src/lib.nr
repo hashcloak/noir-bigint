@@ -17,6 +17,7 @@ mod utils;
 mod bignum_test;
 mod fields;
 mod mul;
+mod test_params;
 
 use dep::std;
 use crate::utils::u60_representation::U60Repr;
