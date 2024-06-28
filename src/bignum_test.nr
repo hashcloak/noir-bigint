@@ -18,84 +18,10 @@ use crate::BigNumParamsTrait;
 use crate::BNExpressionInput;
 use crate::utils::u60_representation::U60Repr;
 use crate::fields::bn254Fq::BNParams as BNParams;
-use crate::mul::karatsuba_mult_18;
-
-struct Test2048Params {}
-impl BigNumParamsTrait<18> for Test2048Params {
-    fn modulus() -> [Field; 18] {[
-        0x0000000000000000000000000000000000c0a197a5ae0fcdceb052c9732614fe,
-        0x0000000000000000000000000000000000656ae034423283422243918ab83be3,
-        0x00000000000000000000000000000000006bf590da48a7c1070b7d5aabaac678,
-        0x00000000000000000000000000000000000cce39f530238b606f24b296e2bda9,
-        0x000000000000000000000000000000000001e1fef9bb9c1c3ead98f226f1bfa0,
-        0x0000000000000000000000000000000000ad8c1c816e12e0ed1379055e373abf,
-        0x0000000000000000000000000000000000cebe80e474f753aa9d1461c435123d,
-        0x0000000000000000000000000000000000aee5a18ceedef88d115a8b93c167ad,
-        0x0000000000000000000000000000000000268ba83c4a65c4307427fc495d9e44,
-        0x0000000000000000000000000000000000dd2777926848667b7df79f342639d4,
-        0x0000000000000000000000000000000000f455074c96855ca0068668efe7da3d,
-        0x00000000000000000000000000000000005ddba6b30bbc168bfb3a1225f27d65,
-        0x0000000000000000000000000000000000591fec484f36707524133bcd6f4258,
-        0x000000000000000000000000000000000059641b756766aeebe66781dd01d062,
-        0x000000000000000000000000000000000058bc5eaff4b165e142bf9e2480eebb,
-        0x0000000000000000000000000000000000667a3964f08e06df772ce64b229a72,
-        0x00000000000000000000000000000000009c1fdb18907711bfe3e3c1cf918395,
-        0x00000000000000000000000000000000000000000000000000000000000000b8
-    ]}
-    fn double_modulus() -> [Field; 18] {[
-        0x000000000000000000000000000000000081432f4b5c1f9b9d60a592e64c29fc,
-        0x0000000000000000000000000000000000cad5c06884650684448723157077c7,
-        0x0000000000000000000000000000000000d7eb21b4914f820e16fab557558cf0,
-        0x0000000000000000000000000000000000199c73ea604716c0de49652dc57b52,
-        0x000000000000000000000000000000000003c3fdf37738387d5b31e44de37f40,
-        0x00000000000000000000000000000000005b183902dc25c1da26f20abc6e757e,
-        0x00000000000000000000000000000000009d7d01c8e9eea7553a28c3886a247b,
-        0x00000000000000000000000000000000005dcb4319ddbdf11a22b5172782cf5b,
-        0x00000000000000000000000000000000004d17507894cb8860e84ff892bb3c89,
-        0x0000000000000000000000000000000000ba4eef24d090ccf6fbef3e684c73a8,
-        0x0000000000000000000000000000000000e8aa0e992d0ab9400d0cd1dfcfb47b,
-        0x0000000000000000000000000000000000bbb74d6617782d17f674244be4facb,
-        0x0000000000000000000000000000000000b23fd8909e6ce0ea4826779ade84b0,
-        0x0000000000000000000000000000000000b2c836eacecd5dd7cccf03ba03a0c4,
-        0x0000000000000000000000000000000000b178bd5fe962cbc2857f3c4901dd76,
-        0x0000000000000000000000000000000000ccf472c9e11c0dbeee59cc964534e4,
-        0x0000000000000000000000000000000000383fb63120ee237fc7c7839f23072a,
-        0x0000000000000000000000000000000000000000000000000000000000000171
-    ]}
-    fn redc_param() -> [Field; 18] {[
-        0x000000000000000000000000000000000091697def7100cd5cf8d890b4ef2ec3,
-        0x00000000000000000000000000000000006765ba8304214dac764d3f4adc3185,
-        0x000000000000000000000000000000000048404bd14d927ea230e60d4bebf940,
-        0x00000000000000000000000000000000007c4d53a23bacc251ecbfc4b7ba5a0b,
-        0x000000000000000000000000000000000093eaf3499474a6f5b2fff83f1259c8,
-        0x00000000000000000000000000000000005bff4c737b97281f1a5f2384a8c16d,
-        0x000000000000000000000000000000000061b4cf2f55358476b5323782999055,
-        0x00000000000000000000000000000000001e7a804e8eacfe3a2a5673bc3885b8,
-        0x0000000000000000000000000000000000eabadeae4282906c817adf70eab4ae,
-        0x0000000000000000000000000000000000166f7df257fe2bf27f0809aceed9b0,
-        0x00000000000000000000000000000000007d90fb7428901b8bed11f6b81e36bf,
-        0x0000000000000000000000000000000000f36e6ba885c60b7024c563605df7e0,
-        0x000000000000000000000000000000000052b7c58d2fb5d2c8478963ae6d4a44,
-        0x000000000000000000000000000000000036ee761de26635f114ccc3f7d74f85,
-        0x0000000000000000000000000000000000e3fb726a10cf2220897513f05243de,
-        0x0000000000000000000000000000000000f43a26bbd732496eb4d828591b8056,
-        0x0000000000000000000000000000000000ff4e42304e60fb3a54fca735499f2c,
-        0x0000000000000000000000000000000000000000000000000000000000000162
-    ]}
-    fn k() -> u64 {
-        2048
-    }
-    fn modulus_bits() -> u64 {
-        2048
-    }
-
-    fn mult(a: [Field; 18], b: [Field; 18]) -> ArrayX<Field, 18, 2> {
-        karatsuba_mult_18(a,b)
-    }
-}
+use crate::test_params::prime2048::Test2048PrimeParams;
 
 type Fq = BigNum<3, BNParams>;
-type Fqq = BigNum<18, Test2048Params>;
+type Fqq = BigNum<18, Test2048PrimeParams>;
 
 // fn main(x: Field, y: pub Field) {
 //     let z = x + y;
@@ -299,57 +225,57 @@ fn test_assert_is_not_equal_overloaded_fail_BN() {
 
 #[test]
 fn test_mul_2048() {
-    let stub: BigNum<18, Test2048Params> = BigNum::new();
+    let stub: BigNum<18, Test2048PrimeParams> = BigNum::new();
     test_mul(stub);
 }
 
 #[test]
 fn test_add_2048() {
-    let stub: BigNum<18, Test2048Params> = BigNum::new();
+    let stub: BigNum<18, Test2048PrimeParams> = BigNum::new();
     test_add(stub);
 }
 
 #[test]
 fn test_assert_is_not_equal_2048() {
-    let stub: BigNum<18, Test2048Params> = BigNum::new();
+    let stub: BigNum<18, Test2048PrimeParams> = BigNum::new();
     assert_is_not_equal(stub);
 }
 
 #[test(should_fail_with = "asssert_is_not_equal fail")]
 fn test_assert_is_not_equal_fail_2048() {
-    let stub: BigNum<18, Test2048Params> = BigNum::new();
+    let stub: BigNum<18, Test2048PrimeParams> = BigNum::new();
     assert_is_not_equal_fail(stub);
 }
 
 #[test(should_fail_with = "asssert_is_not_equal fail")]
 fn test_assert_is_not_equal_overloaded_lhs_fail_2048() {
-    let stub: BigNum<18, Test2048Params> = BigNum::new();
+    let stub: BigNum<18, Test2048PrimeParams> = BigNum::new();
     assert_is_not_equal_overloaded_lhs_fail(stub);
 }
 
 #[test(should_fail_with = "asssert_is_not_equal fail")]
 fn test_assert_is_not_equal_overloaded_rhs_fail_2048() {
-    let stub: BigNum<18, Test2048Params> = BigNum::new();
+    let stub: BigNum<18, Test2048PrimeParams> = BigNum::new();
     assert_is_not_equal_overloaded_rhs_fail(stub);
 }
 
 #[test(should_fail_with = "asssert_is_not_equal fail")]
 fn test_assert_is_not_equal_overloaded_fail_2048() {
-    let stub: BigNum<18, Test2048Params> = BigNum::new();
+    let stub: BigNum<18, Test2048PrimeParams> = BigNum::new();
     assert_is_not_equal_overloaded_fail(stub);
 }
 
 // N.B. witness generation times make these tests take ~15 minutes each! Uncomment at your peril
 // #[test]
 // fn test_div_2048() {
-//     let stub: BigNum<18, Test2048Params> = BigNum::new();
+//     let stub: BigNum<18, Test2048PrimeParams> = BigNum::new();
 //     test_div(stub);
 // }
 
 // N.B. witness generation times make these tests take ~15 minutes each! Uncomment at your peril
 // #[test]
 // fn test_invmod_2048() {
-//     let stub: BigNum<18, Test2048Params> = BigNum::new();
+//     let stub: BigNum<18, Test2048PrimeParams> = BigNum::new();
 //     test_invmod(stub);
 // }
 
@@ -416,8 +342,8 @@ fn test_2048_bit_quadratic_expression() {
         0x0000000000000000000000000000000000000000000000000000000000000058
     ];
 
-    let a_bn: BigNum<18, Test2048Params> = BigNum { limbs: a };
-    let b_bn: BigNum<18, Test2048Params> = BigNum { limbs: b };
+    let a_bn: BigNum<18, Test2048PrimeParams> = BigNum { limbs: a };
+    let b_bn: BigNum<18, Test2048PrimeParams> = BigNum { limbs: b };
     let c_bn = a_bn.__mulmod(b_bn);
     assert(c_bn.limbs == c_expected);
 

@@ -2,7 +2,7 @@ use crate::utils::arrayX::ArrayX;
 use crate::BigNum;
 use crate::BigNumParamsTrait;
 use crate::bignum_test::{test_mul, test_add, test_div, test_invmod, assert_is_not_equal, assert_is_not_equal_fail, assert_is_not_equal_overloaded_lhs_fail, assert_is_not_equal_overloaded_rhs_fail, assert_is_not_equal_overloaded_fail};
-use crate::mul::schoolbook_mult;
+use crate::mul::karatsuba_mult_34;
 
 struct Test4000NonPrimeParams {} 
 
@@ -31,17 +31,17 @@ impl BigNumParamsTrait<34> for Test4000NonPrimeParams {
     4000
   }
 
-  // TODO test what multiplication is most performant
+  // 2 level karatsuba is the most performant (tested level 1,2,3)
   fn mult(a: [Field; 34], b: [Field; 34]) -> ArrayX<Field, 34, 2> {
-    schoolbook_mult(a,b)
+    karatsuba_mult_34(a,b)
   }
 }
 
-// #[test]
-// fn test_mul_4000_nonprime() {
-//     let stub: BigNum<34, Test4000NonPrimeParams> = BigNum::new();
-//     test_mul(stub);
-// }
+#[test]
+fn test_mul_4000_nonprime() {
+    let stub: BigNum<34, Test4000NonPrimeParams> = BigNum::new();
+    test_mul(stub);
+}
 
 // #[test]
 // fn test_add_4000_nonprime() {

@@ -19,6 +19,10 @@ trait BigNumParamsTrait<N> {
 }
 ```
 
+## N
+
+`N` is the number of limbs needed to represent the bigint in radix-120, with enough space to represent `2p` and `redc` which is needed for next steps: `ceil(modulus_bits+1 / 120)`. 
+
 ## modulus
 
 Return modulus `p` in radix-120 in little-endian. 

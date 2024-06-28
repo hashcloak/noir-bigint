@@ -15,9 +15,8 @@ generate_random_number(bits) = {
 
 For example, generate a random modulus `p` of 256 bits. 
 ```
-bits = 256;
-random_number = generate_random_number(bits);
-print(random_number);
+bits = 3000;
+random(2^bits)
 ```
 
 ### 2. Convert to radix-120
