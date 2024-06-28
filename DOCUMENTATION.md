@@ -99,6 +99,8 @@ The last step, we need to check that the condition $t_0 * t_1 + t_4 - q \cdot c 
 
 ### Computation of the quotient and the borrow flags
 
+
+
 ### Addition
 
 ### Multiplication
