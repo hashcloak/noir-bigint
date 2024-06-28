@@ -4,15 +4,6 @@
 
 ### 1. Generate random modulus for bitlength
 
-```
-generate_random_number(bits) = {
-  lower_bound = 2^(bits-1);
-  upper_bound = 2^bits - 1;
-  random_number = random(upper_bound - lower_bound + 1) + lower_bound;
-  return(random_number);
-}
-```
-
 For example, generate a random modulus `p` of 256 bits. 
 ```
 bits = 3000;

@@ -31,8 +31,6 @@ Return modulus `p` in radix-120 in little-endian.
 
 Return `2p` in radix-120 in little-endian.
 
-// TODO what if needs a new limb? For example when we have 3000 bits, it fits exactly in 25 limbs and 2p overflows.
-
 ## redc_param, k
 
 These parameters are used for Barrett reduction: `redc = floor(2^2k / p)` for `k = modulus_bits` or `k = modulus_bits+1`.

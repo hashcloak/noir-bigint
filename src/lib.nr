@@ -667,6 +667,7 @@ impl<N, Params> BigNum<N, Params> {
 
         // Products
         for k in 0..NUM_PRODUCTS {
+          // This does the most efficient multiplication based on array length N
           let mult_res = Params::mult(t0[k], t1[k]);
           for i in 0..N+N-1 {
             product_limbs.add_assign(i, mult_res.get(i));

@@ -139,15 +139,6 @@ fn combine_res_karatsuba<N, M>(r0: ArrayX<Field, M, 2>, r1: ArrayX<Field, M, 2>,
 }
 
 /**
-  * @brief Karatsuba multiplication fixed for 9 limbs
-  * @description This 1 level Karatsuba, the next level does schoolbook mult
-  **/
-pub fn karatsuba_mult_9(a: [Field; 9], b: [Field; 9]) -> ArrayX<Field, 9, 2> {
-    let (r0, r1, r2): (ArrayX<Field, 5, 2>, ArrayX<Field, 5, 2>, ArrayX<Field, 5, 2>) = get_r012_karatsuba(a, b, true); 
-    combine_res_karatsuba(r0, r1, r2, true)
-}
-
-/**
   * @brief Karatsuba multiplication fixed for 13 limbs
   * @description This 1 level Karatsuba, the next level does schoolbook mult
   **/
@@ -238,75 +229,8 @@ pub fn karatsuba_mult_34(a: [Field; 34], b: [Field; 34]) -> ArrayX<Field, 34, 2>
     combine_res_karatsuba(r0, r1, r2, false)
 }
 
-struct Test1080Params {}
-impl BigNumParamsTrait<9> for Test1080Params {
-    // FIXME incorrect values
-    fn modulus() -> [Field; 9] {[
-        0x0000000000000000000000000000000000c0a197a5ae0fcdceb052c9732614fe,
-        0x0000000000000000000000000000000000656ae034423283422243918ab83be3,
-        0x00000000000000000000000000000000006bf590da48a7c1070b7d5aabaac678,
-        0x00000000000000000000000000000000000cce39f530238b606f24b296e2bda9,
-        0x000000000000000000000000000000000001e1fef9bb9c1c3ead98f226f1bfa0,
-        0x0000000000000000000000000000000000ad8c1c816e12e0ed1379055e373abf,
-        0x0000000000000000000000000000000000cebe80e474f753aa9d1461c435123d,
-        0x0000000000000000000000000000000000aee5a18ceedef88d115a8b93c167ad,
-        0x0000000000000000000000000000000000268ba83c4a65c4307427fc495d9e44
-    ]}
-    // FIXME incorrect values
-    fn double_modulus() -> [Field; 9] {[
-        0x000000000000000000000000000000000081432f4b5c1f9b9d60a592e64c29fc,
-        0x0000000000000000000000000000000000cad5c06884650684448723157077c7,
-        0x0000000000000000000000000000000000d7eb21b4914f820e16fab557558cf0,
-        0x0000000000000000000000000000000000199c73ea604716c0de49652dc57b52,
-        0x000000000000000000000000000000000003c3fdf37738387d5b31e44de37f40,
-        0x00000000000000000000000000000000005b183902dc25c1da26f20abc6e757e,
-        0x00000000000000000000000000000000009d7d01c8e9eea7553a28c3886a247b,
-        0x00000000000000000000000000000000005dcb4319ddbdf11a22b5172782cf5b,
-        0x00000000000000000000000000000000004d17507894cb8860e84ff892bb3c89
-    ]}
-    // FIXME incorrect values
-    fn redc_param() -> [Field; 9] {[
-        0x000000000000000000000000000000000091697def7100cd5cf8d890b4ef2ec3,
-        0x00000000000000000000000000000000006765ba8304214dac764d3f4adc3185,
-        0x000000000000000000000000000000000048404bd14d927ea230e60d4bebf940,
-        0x00000000000000000000000000000000007c4d53a23bacc251ecbfc4b7ba5a0b,
-        0x000000000000000000000000000000000093eaf3499474a6f5b2fff83f1259c8,
-        0x00000000000000000000000000000000005bff4c737b97281f1a5f2384a8c16d,
-        0x000000000000000000000000000000000061b4cf2f55358476b5323782999055,
-        0x00000000000000000000000000000000001e7a804e8eacfe3a2a5673bc3885b8,
-        0x0000000000000000000000000000000000eabadeae4282906c817adf70eab4ae
-    ]}
-
-    fn k() -> u64 {
-        1080
-    }
-
-    fn modulus_bits() -> u64 {
-        1080
-    }
-
-    fn mult(a: [Field; 9], b: [Field; 9]) -> ArrayX<Field, 9, 2> {
-        karatsuba_mult_9(a,b)
-    }
-}
-
-// For direct testing of karatsuba for length 9
-type Fq9 = BigNum<9, Test1080Params>;
 type TestMod3000 = BigNum<26, Test3000NonPrimeParams>;
 type TestMod256Prime = BigNum<3, Test256PrimeParams>;
-
-#[test]
-fn test_karatsuba_mult_9() {
-    let a: Fq9 = BigNum::__derive_from_seed([1, 2, 3, 4]);
-    let b: Fq9 = BigNum::__derive_from_seed([4, 5, 6, 7]);
-
-    let c_schoolbook = schoolbook_mult(a.limbs, b.limbs);
-    let c_karatsuba = karatsuba_mult_9(a.limbs, b.limbs);
-    let c_karatsuba_rev = karatsuba_mult_9(b.limbs, a.limbs);
-
-    assert(c_schoolbook == c_karatsuba);
-    assert(c_karatsuba == c_karatsuba_rev);
-}
 
 #[test]
 fn test_karatsuba_mult_18() {
@@ -316,24 +240,18 @@ fn test_karatsuba_mult_18() {
     let c_schoolbook = schoolbook_mult(a.limbs, b.limbs);
     let c_karatsuba = karatsuba_mult_18(a.limbs, b.limbs);
     let c_karatsuba_rev = karatsuba_mult_18(b.limbs, a.limbs);
-    println(c_schoolbook);
-    println(c_karatsuba);
+
     assert(c_schoolbook == c_karatsuba);
     assert(c_karatsuba == c_karatsuba_rev);
 }
 
 #[test]
 fn test_schoolbook_mult(){
-  // Fq and Fqq are testfields defined in bignum_test
-  // 3 and 18 limbs respectively
-
     let a: TestMod256Prime = BigNum::__derive_from_seed([1, 2, 3, 4]);
     let b: TestMod256Prime = BigNum::__derive_from_seed([4, 5, 6, 7]);
 
     let c = schoolbook_mult(a.limbs, b.limbs);
     let c_rev = schoolbook_mult(b.limbs, a.limbs);
-    // println(c);
-    // println(c_rev);
     assert(c == c_rev);
 
     let a: TestMod3000 = BigNum::__derive_from_seed([1, 2, 3, 4]);
@@ -341,8 +259,6 @@ fn test_schoolbook_mult(){
 
     let c = schoolbook_mult(a.limbs, b.limbs);
     let c_rev = schoolbook_mult(b.limbs, a.limbs);
-    // println(c);
-    // println(c_rev);
     assert(c == c_rev);
     
     // Check a*1 == a and 1*b == b
