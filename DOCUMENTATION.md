@@ -95,10 +95,9 @@ After evaluating `t1`, `t2` and `t4`, we compute $t_0 * t_1 + t_4 - q \cdot c$. 
 
 After computing the whole expression, we need to apply the borrow to obtain the limbs in 120 bits. Here, we define the borrow value to $2^{246}$. Notice that $246 = 120 + 120 + 6$ which is the ammount of bits per limb in a product of two numbers of 64 limbs. This means that our implementation is limited to products of two numbers of at most 64 limbs, which is more than enough for real-world applications.
 
+The last step, we need to check that the condition $t_0 * t_1 + t_4 - q \cdot c = 0$. In this case, we may have a situation in which the higher bits of a limb overlaps with the lower bits of the next limb. because of the subtractions. Therefore, we need to check that the lower 120 bits of a limb are zero and then carry the rest of the most significant bits to the next limb. This needs to be done starting from the least significant limb to the most significant one. To optimize this step, we can do the check by multiplying the limb by $2^{-120}$, and then we can constrain the result to be less than $2^{126}$ using a range proof. Notice that if there is a non-zero bit in the lower 120 bits, the multiplication with $2^{-120}$, this result will underflow and the value will wrap around. Hence the range check will not pass with significant probability (the probability that an underflow satisfies the range check is $2^{\text{Bits}(\mathbb{F})-126}$).
+
 ### Computation of the quotient and the borrow flags
-
-
-
 
 ### Addition
 
