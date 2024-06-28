@@ -1,4 +1,52 @@
-# PariGP scripts to support testing
+# PariGP scripts to support testing/usage
+
+## Generating parameters for BigNumParamsTrait
+
+### 1. Generate random modulus for bitlength
+
+For example, generate a random modulus `p` of 256 bits. 
+```
+bits = 256;
+random(2^bits)
+```
+
+### 2. Convert to radix-2^120
+
+Convert a number to an array of the radix-2^120 representation. 
+```
+convert_to_radix_120(number) = {
+  local(radix_120_array, base, quotient, remainder);
+  radix_120_array = [];
+  base = 2^120;
+  quotient = number;
+  while(quotient > 0,
+    remainder = quotient % base;
+    quotient = quotient \ base;
+    radix_120_array = concat(radix_120_array, [remainder]);
+  );
+  return (radix_120_array);
+}
+```
+
+Convert it to radix-2^120 and print as hex values:
+```
+convert_to_radix_120(number) = {
+  local(radix_120_array, base, quotient, remainder);
+  radix_120_array = [];
+  base = 2^120;
+  quotient = number;
+  while(quotient > 0,
+    remainder = quotient % base;
+    quotient = quotient \ base;
+    radix_120_array = concat(radix_120_array, [remainder]);
+  );
+  print(vector(#radix_120_array, i, printf("0x%030x", radix_120_array[i])));
+}
+```
+
+### 3. Calculate redc parameter
+
+For bitlength `k` of `p`, the Barrett reduction parameter `redc = floor(2^2*(k+1)/ p)`.
 
 ## Convert coefficient array to number
 Convert array into corresponding number.
