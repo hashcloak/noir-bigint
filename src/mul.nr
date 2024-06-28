@@ -11,7 +11,7 @@ use crate::test_params::{
 /**
   * @brief schoolbook multiplication of 2 N-length arrays, no reductions
   **/
-pub fn schoolbook_mult<N>(a: [Field; N], b: [Field; N]) -> ArrayX<Field, N, 2> {
+pub fn schoolbook_mult<let N: u64>(a: [Field; N], b: [Field; N]) -> ArrayX<Field, N, 2> {
     let mut res = ArrayX { segments: [[0;N], [0; N]] };
     for i in 0..N {
         for j in 0..N {
@@ -24,7 +24,7 @@ pub fn schoolbook_mult<N>(a: [Field; N], b: [Field; N]) -> ArrayX<Field, N, 2> {
 /**
   * @brief simple addition of limbs of 2 N-length arrays, no reductions
   **/
-fn add_arrays<N>(a: [Field; N], b: [Field; N]) -> [Field;N] {
+fn add_arrays<let N: u64>(a: [Field; N], b: [Field; N]) -> [Field;N] {
     let mut res = [0;N];
     for i in 0..N {
         res[i] = a[i]+b[i];
@@ -38,7 +38,7 @@ fn add_arrays<N>(a: [Field; N], b: [Field; N]) -> [Field;N] {
   *              thus some limbs might have a "negative" value which has wrapped
   *              around in the Field type.
   **/
-fn subtract_arrays<N>(a: ArrayX<Field, N, 2>, b: ArrayX<Field, N, 2>, c: ArrayX<Field, N, 2>) -> ArrayX<Field, N, 2> {
+fn subtract_arrays<let N: u64>(a: ArrayX<Field, N, 2>, b: ArrayX<Field, N, 2>, c: ArrayX<Field, N, 2>) -> ArrayX<Field, N, 2> {
     let mut res = ArrayX { segments: [[0;N], [0; N]] };
     for i in 0..2 {
         for j in 0..N {
@@ -63,7 +63,7 @@ fn subtract_arrays<N>(a: ArrayX<Field, N, 2>, b: ArrayX<Field, N, 2>, c: ArrayX<
   * Note that M is the length of the larger half. This needs to be a numeric generic, in order
   * to create an array of that length that will be accepted by the compiler
   **/
-fn get_r012_karatsuba<N, M>(a: [Field; N], b: [Field; N], odd: bool) -> (ArrayX<Field, M, 2>, ArrayX<Field, M, 2>, ArrayX<Field, M, 2>) {
+fn get_r012_karatsuba<let N: u64, let M: u64>(a: [Field; N], b: [Field; N], odd: bool) -> (ArrayX<Field, M, 2>, ArrayX<Field, M, 2>, ArrayX<Field, M, 2>) {
     // Initialize lo/hi arrays of same length, even if the lower half is shorter
     // this is for consequent functions
     // a = [a_lo, a_hi], b = [b_lo, b_hi]
@@ -92,15 +92,15 @@ fn get_r012_karatsuba<N, M>(a: [Field; N], b: [Field; N], odd: bool) -> (ArrayX<
     //    = a_lo*b_lo + a_lo*b_hi + a_hi*b_lo + a_hi*b_hi - a_lo*b_lo - a_hi*b_hi
     //    = a_lo*b_hi + a_hi*b_lo
 
-    // a_lo, b_lo, a_hi, b_hi have (M of M-1) limbs of 120 bits
-    // r0, r2 have 2M-1 limbs of 240+log(2M-1) bits
+    // a_lo, b_lo, a_hi, b_hi have (M or M-1) limbs of 120 bits
+    // r0, r2 have 2M-1 limbs of 240+log(M) bits
     let r0: ArrayX<Field, M, 2> = schoolbook_mult(a_lo, b_lo);
     let r2: ArrayX<Field, M, 2> = schoolbook_mult(a_hi, b_hi);
 
-    // added_a, added_b have (M of M-1) limbs of 121 bits
+    // added_a, added_b have (M or M-1) limbs of 121 bits
     let added_a = add_arrays(a_lo, a_hi);
     let added_b = add_arrays(b_lo, b_hi);
-    // r1 has 2M-1 limbs of 242+log(2M-1) bits
+    // r1 has 2M-1 limbs of 242+log(M) bits
     let mut r1: ArrayX<Field, M, 2> = schoolbook_mult(added_a, added_b);
     // This subtraction gives no issues if used in combination with combining these results as follows:
     // [r0_lo, r0_hi + r1_lo, r1_hi + r2_lo, r2_hi]
@@ -119,7 +119,7 @@ fn get_r012_karatsuba<N, M>(a: [Field; N], b: [Field; N], odd: bool) -> (ArrayX<
   * @param r1: 2 arrays of length M, contains value a_lo*b_hi + a_hi*b_lo
   * @param r2: 2 arrays of length M, contains value a_hi * b_hi
   **/
-fn combine_res_karatsuba<N, M>(r0: ArrayX<Field, M, 2>, r1: ArrayX<Field, M, 2>, r2: ArrayX<Field, M, 2>, odd: bool) -> ArrayX<Field, N, 2> {
+fn combine_res_karatsuba<let N: u64, let M: u64>(r0: ArrayX<Field, M, 2>, r1: ArrayX<Field, M, 2>, r2: ArrayX<Field, M, 2>, odd: bool) -> ArrayX<Field, N, 2> {
     // Result has 2*N limbs, of which the last will be 0
     let mut res = ArrayX { segments: [[0;N], [0;N]] };
     

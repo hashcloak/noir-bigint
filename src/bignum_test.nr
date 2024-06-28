@@ -69,7 +69,7 @@ type Fqq = BigNum<18, Test2048PrimeParams>;
 // 98760
 // 99689
 // 929 gates for a 2048 bit mul
-pub fn test_mul<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
+pub fn test_mul<let N: u64, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
     let a: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
     let b: BigNum<N, Params> = BigNum::__derive_from_seed([4, 5, 6, 7]);
 
@@ -78,7 +78,7 @@ pub fn test_mul<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait
     assert(c == d);
 }
 
-pub fn test_add<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
+pub fn test_add<let N: u64, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
     let a: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
     let b: BigNum<N, Params> = BigNum::__derive_from_seed([4, 5, 6, 7]);
     let one: BigNum<N, Params> = BigNum::one();
@@ -99,7 +99,7 @@ pub fn test_add<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait
     assert(e.limbs[0] == 2);
 }
 
-pub fn test_div<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
+pub fn test_div<let N: u64, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
     let a: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
     let b: BigNum<N, Params> = BigNum::__derive_from_seed([4, 5, 6, 7]);
 
@@ -107,7 +107,7 @@ pub fn test_div<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait
     assert(b * c == a);
 }
 
-pub fn test_invmod<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
+pub fn test_invmod<let N: u64, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
     let u: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
     for _ in 0..1 {
         let v = u.__invmod();
@@ -117,21 +117,21 @@ pub fn test_invmod<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTr
     }
 }
 
-pub fn assert_is_not_equal<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
+pub fn assert_is_not_equal<let N: u64, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
     let a: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
     let b: BigNum<N, Params> = BigNum::__derive_from_seed([4, 5, 6, 7]);
 
     a.assert_is_not_equal(b);
 }
 
-pub fn assert_is_not_equal_fail<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
+pub fn assert_is_not_equal_fail<let N: u64, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
     let a: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
     let b: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
 
     a.assert_is_not_equal(b);
 }
 
-pub fn assert_is_not_equal_overloaded_lhs_fail<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
+pub fn assert_is_not_equal_overloaded_lhs_fail<let N: u64, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
     let a: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
     let b: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
 
@@ -143,7 +143,7 @@ pub fn assert_is_not_equal_overloaded_lhs_fail<N, Params>(_: BigNum<N, Params>) 
     a_plus_modulus.assert_is_not_equal(b);
 }
 
-pub fn assert_is_not_equal_overloaded_rhs_fail<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
+pub fn assert_is_not_equal_overloaded_rhs_fail<let N: u64, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
     let a: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
     let b: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
 
@@ -155,7 +155,7 @@ pub fn assert_is_not_equal_overloaded_rhs_fail<N, Params>(_: BigNum<N, Params>) 
     a.assert_is_not_equal(b_plus_modulus);
 }
 
-pub fn assert_is_not_equal_overloaded_fail<N, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
+pub fn assert_is_not_equal_overloaded_fail<let N: u64, Params>(_: BigNum<N, Params>) where Params: BigNumParamsTrait<N> {
     let a: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
     let b: BigNum<N, Params> = BigNum::__derive_from_seed([1, 2, 3, 4]);
 
