@@ -11,8 +11,6 @@ trait BigNumParamsTrait<N> {
 
     fn redc_param() -> [Field; N];
 
-    fn k() -> u64;
-
     fn modulus_bits() -> u64;
 
     fn mult(a: [Field; N], b: [Field; N]) -> ArrayX<Field, N, 2>;
@@ -21,19 +19,19 @@ trait BigNumParamsTrait<N> {
 
 ## N
 
-`N` is the number of limbs needed to represent the bigint in radix-120, with enough space to represent `2p` and `redc` which is needed for next steps: `ceil(modulus_bits+1 / 120)`. 
+`N` is the number of limbs needed to represent the bigint in radix-2^120, with enough space to represent `2p` and `redc` which is needed for next steps: `ceil(modulus_bits+1 / 120)`. 
 
 ## modulus
 
-Return modulus `p` in radix-120 in little-endian. 
+Return modulus `p` in radix-2^120 in little-endian. 
 
 ## double_modulus
 
-Return `2p` in radix-120 in little-endian.
+Return `2p` in radix-2^120 in little-endian.
 
-## redc_param, k
+## redc_param
 
-These parameters are used for Barrett reduction: `redc = floor(2^2k / p)` for `k = modulus_bits` or `k = modulus_bits+1`.
+These parameters are used for Barrett reduction: `redc = floor(2^2k / p)` for `k = modulus_bits`.
 
 ## modulus_bits
 

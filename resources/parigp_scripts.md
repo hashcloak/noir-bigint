@@ -6,13 +6,13 @@
 
 For example, generate a random modulus `p` of 256 bits. 
 ```
-bits = 3000;
+bits = 256;
 random(2^bits)
 ```
 
-### 2. Convert to radix-120
+### 2. Convert to radix-2^120
 
-Convert a number to an array of the radix-120 representation. 
+Convert a number to an array of the radix-2^120 representation. 
 ```
 convert_to_radix_120(number) = {
   local(radix_120_array, base, quotient, remainder);
@@ -28,7 +28,7 @@ convert_to_radix_120(number) = {
 }
 ```
 
-Convert it to radix-120 and print as hex values:
+Convert it to radix-2^120 and print as hex values:
 ```
 convert_to_radix_120(number) = {
   local(radix_120_array, base, quotient, remainder);

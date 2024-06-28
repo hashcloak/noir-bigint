@@ -21,10 +21,6 @@ impl BigNumParamsTrait<3> for Secp256k1Params {
       [4294968273, 0, 65536]
     }
 
-    fn k() -> u64 {
-        256
-    }
-
     fn modulus_bits() -> u64 {
         256
     }

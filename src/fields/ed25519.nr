@@ -21,10 +21,6 @@ impl BigNumParamsTrait<3> for Ed25519Params {
       [19, 0, 32768]
     }
 
-    fn k() -> u64 {
-        255
-    }
-
     fn modulus_bits() -> u64 {
         255
     }

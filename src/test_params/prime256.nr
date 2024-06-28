@@ -22,11 +22,6 @@ impl BigNumParamsTrait<3> for Test256PrimeParams {
     [1029374792312756241085125999351554650, 971949030811144649531952005452139969, 125708]
   }
 
-  // TODO is this correct?
-  fn k() -> u64 {
-    256
-  }
-
   fn modulus_bits() -> u64 {
     256
   }

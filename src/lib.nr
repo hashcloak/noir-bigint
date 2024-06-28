@@ -45,11 +45,6 @@ trait BigNumParamsTrait<N> {
     fn redc_param() -> [Field; N];
 
     /**
-     * @brief k used for __barrett_reduction. Should be at least modulus_bits() + 1
-     **/
-    fn k() -> u64;
-
-    /**
      * @brief modulus_bits = log2(modulus) rounded up
      **/
     fn modulus_bits() -> u64;
@@ -162,7 +157,7 @@ impl<N, Params> BigNum<N, Params> {
             unreduced.limbs[N - 1] = hi;
         }
         let to_reduce: ArrayX<Field, N, 2> = ArrayX { segments: [unreduced.limbs, [0; N]] };
-        let (_, remainder) = BigNum::__barrett_reduction(to_reduce, Params::redc_param(), Params::k(), Params::modulus());
+        let (_, remainder) = BigNum::__barrett_reduction(to_reduce, Params::redc_param(), Params::modulus_bits(), Params::modulus());
         BigNum { limbs: remainder }
     }
 
@@ -284,7 +279,7 @@ impl<N, Params> BigNum<N, Params> {
         let (q, r) = BigNum::__barrett_reduction(
             BigNum::__normalize_limbs(mul, N + N - 1),
             Params::redc_param(),
-            Params::k(),
+            Params::modulus_bits(),
             Params::modulus()
         );
 
@@ -433,7 +428,7 @@ impl<N, Params> BigNum<N, Params> {
         let relation_result: ArrayX<Field, N, 2> = BigNum::__normalize_limbs((mulout_pu60 - mulout_nu60).into_arrayX(), N + N - 1);
 
         let modulus: [Field; N] = Params::modulus();
-        let (quotient, remainder) = BigNum::__barrett_reduction(relation_result, Params::redc_param(), Params::k(), modulus);
+        let (quotient, remainder) = BigNum::__barrett_reduction(relation_result, Params::redc_param(), Params::modulus_bits(), modulus);
         assert(remainder == [0; N]);
 
         for i in 0..N {
