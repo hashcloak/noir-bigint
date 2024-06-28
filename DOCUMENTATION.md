@@ -81,13 +81,29 @@ $$
 $$.
 
 Here
-- $N_P$ is the number of products that will be computed.
-- $N_L
+- $N_P$ is the number of products that will be computed,
+- $N_L$ is the number of products in the left hand side,
+- $N_R$ is the number of products in the right hand side,
+- $N_A$ is the number of linear terms in the expression,
+- $L$ is a colection of terms in the left hand side,
+- $R$ is a colection of terms in the right hand side, and
+- $A$ is the colection of linear terms.
+
+First, the function computes the quotient $q$ of the quadratic expression along with the borrow flags that point when an underflow occurred during the subtractions. The computation of the quotient and the borrow flags will be covered in the next section. Then, the function takes the left hand side $L$ and the right hand side $R$ and computes internal sums. Those sums are accumulated in `t0` and `t1` respectively. The same thing holds for the linear terms in $A$ which is accumulated in `t4`. In the construction of `t0`, `t1` and `t4`, we are subtracting the negative terms but then we add $2N$ to the current result. The reason for this correction with $2N$ is because the big-integers in our implementations are **lazily** constrained. This means that when we create a `BigNum` $a$, we do not check that $a < p$, instead we check that $a < 2^{\lceil \log_2 p \rceil}$. This last comparison is more efficient than the first one in the context of ZK proofs. Therefore, if we have an input $x' = x + p$ for $x \geq 0$, to compute his negative counterpart, we compute $2p - x'$ to obtain a positive number (notice that if we do $p - x'$, we obtain a negative number). At the end, $2p - x' \equiv -x' \mod p$.
+
+After evaluating `t1`, `t2` and `t4`, we compute $t_0 * t_1 + t_4 - q \cdot c$. Here is when we use `ArrayX` as a mechanism to store the limbs. This is because the product of `t1` and `t2` will give us $2N - 1$ limbs. The idea behind this computation is to constrain $t_0 * t_1 + t_4 - q \cdot c = 0$. At this point we are using schoolbook multiplication and we are not being carefull to reduce the limbs to 120 bits and considering overflows, so this product is being computed lazily. Those concerns will be covered later with the help of the borrow flags computed in the initial stage of the function.
+
+After computing the whole expression, we need to apply the borrow to obtain the limbs in 120 bits. Here, we define the borrow value to $2^{246}$. Notice that $246 = 120 + 120 + 6$ which is the ammount of bits per limb in a product of two numbers of 64 limbs. This means that our implementation is limited to products of two numbers of at most 64 limbs, which is more than enough for real-world applications.
+
+### Computation of the quotient and the borrow flags
+
+
+
 
 ### Addition
 
 ### Multiplication
 
-### Schoolbook multiplication
+#### Schoolbook multiplication
 
-### Karatsuba multiplication
+#### Karatsuba multiplication
