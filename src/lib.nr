@@ -45,6 +45,13 @@ trait BigNumParamsTrait<N> {
     fn redc_param() -> [Field; N];
 
     /**
+     * @brief k used for __barrett_reduction. Usually equals modulus_bits()
+     *          but might be modulus_bits() + 1
+     * TODO get more clarity about when the latter is needed
+     **/
+    fn k() -> u64;
+
+    /**
      * @brief modulus_bits = log2(modulus) rounded up
      **/
     fn modulus_bits() -> u64;
@@ -157,7 +164,7 @@ impl<N, Params> BigNum<N, Params> {
             unreduced.limbs[N - 1] = hi;
         }
         let to_reduce: ArrayX<Field, N, 2> = ArrayX { segments: [unreduced.limbs, [0; N]] };
-        let (_, remainder) = BigNum::__barrett_reduction(to_reduce, Params::redc_param(), Params::modulus_bits(), Params::modulus());
+        let (_, remainder) = BigNum::__barrett_reduction(to_reduce, Params::redc_param(), Params::k(), Params::modulus());
         BigNum { limbs: remainder }
     }
 
@@ -279,7 +286,7 @@ impl<N, Params> BigNum<N, Params> {
         let (q, r) = BigNum::__barrett_reduction(
             BigNum::__normalize_limbs(mul, N + N - 1),
             Params::redc_param(),
-            Params::modulus_bits(),
+            Params::k(),
             Params::modulus()
         );
 
@@ -428,7 +435,7 @@ impl<N, Params> BigNum<N, Params> {
         let relation_result: ArrayX<Field, N, 2> = BigNum::__normalize_limbs((mulout_pu60 - mulout_nu60).into_arrayX(), N + N - 1);
 
         let modulus: [Field; N] = Params::modulus();
-        let (quotient, remainder) = BigNum::__barrett_reduction(relation_result, Params::redc_param(), Params::modulus_bits(), modulus);
+        let (quotient, remainder) = BigNum::__barrett_reduction(relation_result, Params::redc_param(), Params::k(), modulus);
         assert(remainder == [0; N]);
 
         for i in 0..N {
@@ -718,7 +725,7 @@ impl<N, Params> BigNum<N, Params> {
         let hi_downshift: Field = 1 / hi_shift;
         for i in 0..N + N - 2 {
             product_limbs.mul_assign(i, hi_downshift);
-            std::as_witness(product_limbs.get(i));
+            // std::as_witness(product_limbs.get(i));
             product_limbs.get(i).assert_max_bit_size(126); // N.B. is this sufficient? going beyond 126 costs us 1 gate per limb
             product_limbs.add_assign(i + 1, product_limbs.get(i));
         }

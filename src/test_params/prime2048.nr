@@ -85,6 +85,10 @@ impl BigNumParamsTrait<18> for Test2048PrimeParams {
         0x0000000000000000000000000000000000000000000000000000000000000162
     ]}
 
+    fn k() -> u64 {
+        2048
+    }
+    
     fn modulus_bits() -> u64 {
         2048
     }

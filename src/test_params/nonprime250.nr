@@ -28,6 +28,10 @@ impl BigNumParamsTrait<3> for Test250NonPrimeParams {
     // [1075212547434426858841772948931648171, 430013749369103517728091172168610826, 5444]
   }
 
+  fn k() -> u64 {
+    250
+  }
+
   fn modulus_bits() -> u64 {
     250
   }
