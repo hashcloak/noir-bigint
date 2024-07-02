@@ -6,7 +6,9 @@
 
 The goal is to implement a library that evaluates operations modulo an integer $p$ so that both the operands and the modulus can have arbitrary bit lengths. We will represent the operands and the modulus as $l$-bit big-integers. Each number will be defined as an array of $d$-bit *limbs*. Therefore, each value will need $N = \lceil\frac{l}{d}\rceil$ limbs for its representation.
 
-Once the representation is defined, we want to expose an API that allows developers to write modular arithmetic zero-knowledge proofs using this big-integer modulus representation. Concretely, given $c \in \mathbb{Z}_p$, a prover wants to prove that he knows $a, b \in \mathbb{Z}_p$, such that $c$ is the sum or the product of $a$ and $b$ modulo $p$. This modular arithmetic is relevant in other cryptographic constructions like RSA signature schemes.
+Once the representation is defined, we want to expose an API that allows developers to write modular arithmetic zero-knowledge proofs using this big-integer modulus representation. Concretely, given $c \in \mathbb{Z}_p$, a prover wants to prove that they know $a, b \in \mathbb{Z}_p$, such that $c$ is the sum or the product of $a$ and $b$ modulo $p$. This modular arithmetic is relevant in other cryptographic constructions like RSA signature schemes.
+
+The implementation and this documentation follow the ideas presented in the blog post "[Big integer multiplication in Noir over arbitrary moduli](https://hackmd.io/@aztec-network/S1LyK89JC)" by Zachary James Williamson. We encourage readers to read the blog post to familiarize themselves with the initial ideas. However, much of the design considered in this implementation and documentation has changed significantly compared to the ideas presented in the blog port.
 
 In the context of ZK-proofs, choosing $d$ is an important task, given that it will affect the efficiency of the proof generation. The algorithms considered in the library require approximately $O(N^{1.5})$ multiplications and additions and $O(l)$ range checks. As we mentioned before, $d$ is inversely proportional to $N$. Hence, a large $d$ would be a good choice for a large modulus. However, if the modulus is small, it is best to choose a small $d$ to reduce the complexity of the algorithms.
 
@@ -22,7 +24,7 @@ struct BigNum<N,Params> {
 }
 ```
 
-This struct represents a big-integer with $N$ limbs. Each limb will be represented as a `Field` element whose value is in the range $\{0, \dots, 2^d - 1\}$ (remember that in this case, $d = 120$). We also say that the number is represented in a radix of $d$ bits. Considering this representation, if a number is represented using the vector $(a_0, \dots, a_{N-1})$, then, the decimal representation of this number will be $\sum_{i=0}^{N-1} a_i \cdot 2^{d \cdot i}$.
+This struct represents a big-integer with $N$ limbs. Each limb will be represented as a `Field` element whose value is in the range $\{0, \dots, 2^d - 1\}$ (remember that in this case, $d = 120$). We also say that the number is represented in a radix of $d$ bits. The `Field` element typically can store more than $d$-bit numbers. Hence, we have some free bits in the most significant section of a `Field` to use in case of an overflow while operating $d$-bit elements. The amount of bits for a `Field` element depends on the backend used to run the proof. For the rest of the discussion, we will assume that the number of bits stored in a `Field` element is 254, the bit length given by the curve in the default backend. Considering this representation, if a number is represented using the vector $(a_0, \dots, a_{N-1})$, then the decimal representation of this number will be $\sum_{i=0}^{N-1} a_i \cdot 2^{d \cdot i}$.
 
 The API is designed around this struct so the addition and multiplication are defined as methods implemented for this struct.
 
@@ -37,7 +39,7 @@ The struct `ArrayX` is an implementation of an array whose length is the product
 The struct for `ArrayX` is presented next:
 
 ```rust
-struct ArrayX<T, N, SizeMultiplier> {
+struct ArrayX<T, let N: u64, let SizeMultiplier: u8> {
     segments: [[T; N]; SizeMultiplier]
 }
 ```
@@ -70,7 +72,7 @@ Using the above methods, the strategy consists of taking big integers in the 120
 
 ## Modular arithmetic in ZK
 
-First, let us remind the goal at hand. In the context of ZK-proofs, a prover wants to prove that he knows $a, b \in \mathbb{Z}_p$ such that $c = a \odot b \mod p$, for some $c \in \mathbb{Z}_p$, and $\odot \in \{+, \times \}$. The strategy that we will consider in the implmenetation is to compute $q, c \in \mathbb{Z}$ such that $a \odot b = p \cdot q + c$, for $c < p$, using Noir unconstrained functions. The unconstrained functions allow us to compute intermediate witnesses that are not constrained by the proof, and therefore, cheap to compute. Once we have computed $q$ and $c$, we constrain them to the condition $a \odot b - p \cdot q - c = 0$ to prove that $c$ is the reduction modulo $p$ that we are looking for. In the implementation, we do the constraining in a more general way considering not just the case of the addition and multiplication modulo $p$ but for an arbitrary quadratic expression. We will cover this ideas in deep later.
+First, let us remind the goal at hand. In the context of ZK-proofs, a prover wants to prove that they know $a, b \in \mathbb{Z}_p$ such that $c = a \odot b \mod p$, for some $c \in \mathbb{Z}_p$, and $\odot \in \{+, \times \}$. The strategy that we will consider in the implmenetation is to compute $q, c \in \mathbb{Z}$ such that $a \odot b = p \cdot q + c$, for $c < p$, using Noir unconstrained functions. The unconstrained functions allow us to compute intermediate witnesses that are not constrained by the proof, and therefore, cheap to compute. Once we have computed $q$ and $c$, we constrain them to the condition $a \odot b - p \cdot q - c = 0$ to prove that $c$ is the reduction modulo $p$ that we are looking for. In the implementation, we do the constraining in a more general way considering not just the case of the addition and multiplication modulo $p$ but for an arbitrary quadratic expression. We will cover this ideas in deep later.
 
 ### Constraining quadratic expressions
 
