@@ -657,6 +657,7 @@ impl<N, Params> BigNum<N, Params> {
             }
         }
 
+        // TODO: Fix this comment given that t3 does not exist.
         // We want to evaluate that t0 * t1 + t2 * t3 + t4 - Quotient * Modulus = 0, evaluated over the integers
         // For this we need to be able to borrow values from more-significant limbs into less-significant limbs,
         // so that we can ensure that no limbs will underflow for an honest Prover
