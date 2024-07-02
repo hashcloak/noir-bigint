@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 
-// Decomposes a single field into two 120 bit fields and a carry
+// Decomposes a single field into two 120 bit fields
 unconstrained pub fn split_120_bits(x: Field) -> (Field, Field) {
     let x_bytes: [u8] = x.to_le_bytes(32);
 

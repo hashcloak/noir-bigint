@@ -411,6 +411,8 @@ impl<N, Params> BigNum<N, Params> {
 
         let (add_p, add_n): ([Field; N], [Field; N]) = BigNum::__add_linear_expression(linear_terms);
 
+        // Multiplication of two N-limb numbers gives us a (2N - 1) limb number.
+        // Hence we use ArrayX.
         let mut mulout_p: ArrayX<Field, N,2> = ArrayX::new();
         let mut mulout_n: ArrayX<Field, N,2> = ArrayX::new();
 
@@ -427,11 +429,19 @@ impl<N, Params> BigNum<N, Params> {
             mulout_n.add_assign(i, add_n[i]);
         }
 
+        // Normalizes each limb to be in 120-bits.
         let T0: ArrayX<Field, N, 2> = BigNum::__normalize_limbs(mulout_p, N + N - 1);
         let T1: ArrayX<Field, N, 2> = BigNum::__normalize_limbs(mulout_n, N + N - 1);
 
+        // Takes each multiplication output with (2N - 1) limbs with 120-bit numbers
+        // and converts it into limbs of 60 bits. Therefore, we obtain 4N - 2 limbs
+        // that can be stored in 4N limbs.
         let mulout_pu60: U60Repr<N, 4> = U60Repr::new(T0);
         let mulout_nu60: U60Repr<N, 4> = U60Repr::new(T1);
+
+        // into_array() converts the 60-bit limbs into 120-bit limbs. So, we are subtracting
+        // and converting the result again into a 120-bit limb format with normalization.
+        // Again, we obtain 2N - 1 limbs.
         let relation_result: ArrayX<Field, N, 2> = BigNum::__normalize_limbs((mulout_pu60 - mulout_nu60).into_arrayX(), N + N - 1);
 
         let modulus: [Field; N] = Params::modulus();
