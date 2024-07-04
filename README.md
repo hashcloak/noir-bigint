@@ -1,6 +1,6 @@
 # Noir BigInt over arbitrary moduli
 
-We present **noir-bigint**, a library that implements modular arithmetic between big-integers using a big-integer modulus. Concretely, this library allows the developer to compute $a \odot b = c \mod p$, where $\odot \in \{+, -, *, / \}$ and $p \in \mathbb{Z}$ is a prime modulus. The library represents all the big-integers as an array of $N$ limbs, where $N$ is a positive integer defined at compile time. The only restriction the library offers is that $N$ should be less than 64, which is a reasonable assumption for most real-world applications.
+We present **noir-bigint**, a library that implements modular arithmetic between big-integers using a big-integer modulus. Concretely, this library allows the developer to compute $a \odot b = c \mod p$, where $\odot \in \lbrace +, -, *, / \rbrace$ and $p \in \mathbb{Z}$ is a prime modulus. The library represents all the big-integers as an array of $N$ limbs, where $N$ is a positive integer defined at compile time. The only restriction the library offers is that $N$ should be less than 64, which is a reasonable assumption for most real-world applications.
 
 ## `BigNum` struct
 
