@@ -24,7 +24,7 @@ struct BigNum<N,Params> {
 }
 ```
 
-This struct represents a big-integer with $N$ limbs. Each limb will be represented as a `Field` element whose value is in the range $\{0, \dots, 2^d - 1\}$ (remember that in this case, $d = 120$). We also say that the number is represented in a radix of $d$ bits. The `Field` element typically can store more than $d$-bit numbers. Hence, we have some free bits in the most significant section of a `Field` to use in case of an overflow while operating $d$-bit elements. The amount of bits for a `Field` element depends on the backend used to run the proof. For the rest of the discussion, we will assume that the number of bits stored in a `Field` element is 254, the bit length given by the curve in the default backend. Considering this representation, if a number is represented using the vector $(a_0, \dots, a_{N-1})$, then the decimal representation of this number will be $\sum_{i=0}^{N-1} a_i \cdot 2^{d \cdot i}$.
+This struct represents a big-integer with $N$ limbs. Each limb will be represented as a `Field` element whose value is in the range $\lbrace 0, \dots, 2^d - 1 \rbrace$ (remember that in this case, $d = 120$). We also say that the number is represented in a radix of $d$ bits. The `Field` element typically can store more than $d$-bit numbers. Hence, we have some free bits in the most significant section of a `Field` to use in case of an overflow while operating $d$-bit elements. The amount of bits for a `Field` element depends on the backend used to run the proof. For the rest of the discussion, we will assume that the number of bits stored in a `Field` element is 254, the bit length given by the curve in the default backend. Considering this representation, if a number is represented using the vector $(a_0, \dots, a_{N-1})$, then the decimal representation of this number will be $\sum_{i=0}^{N-1} a_i \cdot 2^{d \cdot i}$.
 
 The API is designed around this struct so the addition and multiplication are defined as methods implemented for this struct.
 
@@ -72,15 +72,13 @@ Using the above methods, the strategy consists of taking big integers in the 120
 
 ## Modular arithmetic in ZK
 
-First, let us remember the goal at hand. In the context of ZK-proofs, a prover wants to prove that they know $a, b \in \mathbb{Z}_p$ such that $c = a \odot b \mod p$, for some $c \in \mathbb{Z}_p$, and $\odot \in \{+, \times \}$. The strategy that we will consider in the implementation is to compute $q, c \in \mathbb{Z}$ such that $a \odot b = p \cdot q + c$, for $c < p$, using Noir unconstrained functions. The unconstrained functions allow us to compute intermediate witnesses that are not constrained by the proof and, therefore, cheap to compute. Once we have computed $q$ and $c$, we constrain them to the condition $a \odot b - p \cdot q - c = 0$ to prove that $c$ is the reduction modulo $p$ that we are looking for. In the implementation, we do the constraining in a more general way, considering not just the case of the addition and multiplication modulo $p$ but also an arbitrary quadratic expression. We will cover this idea in depth later.
+First, let us remember the goal at hand. In the context of ZK-proofs, a prover wants to prove that they know $a, b \in \mathbb{Z}_p$ such that $c = a \odot b \mod p$, for some $c \in \mathbb{Z}_p$, and $\odot \in \lbrace +, \times \rbrace$. The strategy that we will consider in the implementation is to compute $q, c \in \mathbb{Z}$ such that $a \odot b = p \cdot q + c$, for $c < p$, using Noir unconstrained functions. The unconstrained functions allow us to compute intermediate witnesses that are not constrained by the proof and, therefore, cheap to compute. Once we have computed $q$ and $c$, we constrain them to the condition $a \odot b - p \cdot q - c = 0$ to prove that $c$ is the reduction modulo $p$ that we are looking for. In the implementation, we do the constraining in a more general way, considering not just the case of the addition and multiplication modulo $p$ but also an arbitrary quadratic expression. We will cover this idea in depth later.
 
 ### Constraining quadratic expressions
 
 One of the most important parts of the algorithm is constraining to the condition $a \odot b - p \cdot q - c = 0$, for some $q, c \in \mathbb{Z}$ such that $c < p$. In the implementation, we generalize this check to more general quadratic expressions. Our goal is to constrain the following quadratic expression:
 
-$$
-\sum_{i=0}^{N_P - 1} \left(\sum_{j=0}^{N_L-1} L[i][j] \cdot \sum_{j=0}^{N_R-1} R[i][j] \right) + \sum_{i=0}^{N_A - 1} A[i] = q \cdot p
-$$.
+$$ \sum_{i=0}^{N_P - 1} \left(\sum_{j=0}^{N_L-1} L[i][j] \cdot \sum_{j=0}^{N_R-1} R[i][j] \right) + \sum_{i=0}^{N_A - 1} A[i] = q \cdot p $$
 
 Here
 - $N_P$ is the number of products that will be computed,
@@ -101,7 +99,7 @@ In the last step, we must check that the condition $t_0 * t_1 + t_4 - q \cdot c 
 
 ### Computation of the quotient and the borrow flags
 
-In the computation of the quotient and the borrow flags, we will compute the quotient $q$ and the flags that tell whether the subtraction in the expression to be evaluated had an underflow. These borrow flags are used to correct the underflow by doing a carry to obtain positive limbs in the range $\{0, \dots, 2^d - 1\}$.
+In the computation of the quotient and the borrow flags, we will compute the quotient $q$ and the flags that tell whether the subtraction in the expression to be evaluated had an underflow. These borrow flags are used to correct the underflow by doing a carry to obtain positive limbs in the range $\lbrace 0, \dots, 2^d - 1\rbrace$.
 
 First, the function computes the negative and positive terms in the whole expression in two data structures. The data structure for the negative numbers will store the corresponding sum of all the negative numbers with a positive sign. Notice that we are multiplying numbers of $N$ limbs; therefore, the final result that stores both the negative and positive terms in the expression has $2N - 1$ limbs.
 
@@ -123,7 +121,19 @@ We proceed with the previous steps until we reach the last limb, and then we ret
 
 ### Addition
 
+Once we have a mechanism to constrain arbitrary quadratic expressions, we can do the addition as an unconstrained operation and then constrain it with `evaluate_quadratic_expression()`.
+
+To compute the arithmetic operation $a + b = c \mod p$, we first operate the `BigNum` elements using the unconstrained functoin `__addmod()`. This method converts the 120-bit limb representation to 60-bit limb representation, adds the two vectors and reduces the value modulo $p$. Then the method converts the representation back to 120-bit limb representation, and returns the result. Given that this metod is unconstrained, we can use comparison between field elements freely, which are very expensive in a constrained context.
+
+Once we have the addition, we need to constrain the result. This can be done using the `evaluate_quadratic_expression()` constraining to the expression $a + b - c = q \cdot p$.
+
 ### Multiplication
+
+To do the multiplication, we first multiply two `BigNum` instances using an unconstrained function, and then we constrain the multiplication using the constrained functoin `evaluate_quadratic_expression()`.
+
+For the unconstrained multiplication function, we have two different flavors to multiply two $N$ limb numbers: we can perform schoolbook, or we can use the Karatsuba algorithm. Both are useful depending on the number of limbs: Karatsuba has a better performance for large values of $N$, while schoolbook has a better performance for small values of $N$.
+
+We next describe both approaches.
 
 #### Schoolbook multiplication
 
