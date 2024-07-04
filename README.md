@@ -17,7 +17,9 @@ The `BigNum` struct is the base struct that represents a big integer, where each
 - `validate_in_field(self: Self)`: validate that `self` is in the field $\mathbb{Z}_p$ where $p$ is the modulus parameter.
 - `conditional_select(self: Self, other: Self, predicate: bool)`: given the value in the `predicate` return either `self` if `predicate` is zero or `other` if `predicate` is 1. 
 - `evaluate_quadratic_expression<LHS_N, RHS_N, NUM_PRODUCTS, ADD_N>(lhs_products: [[BNExpressionInput<N, Params>; LHS_N]; NUM_PRODUCTS], rhs_products: [[BNExpressionInput<N, Params>; RHS_N]; NUM_PRODUCTS], linear_terms: [BNExpressionInput<N, Params>; ADD_N])`: constraints to the following quadratic expression:
+
     $$ \sum_{i=0}^{N_P - 1} \left(\sum_{j=0}^{N_L-1} L[i][j] \cdot \sum_{j=0}^{N_R-1} R[i][j] \right) + \sum_{i=0}^{N_A - 1} A[i] = q \cdot p $$
+    
  The function receives the right-hand side products, the left-hand side products, and the linear terms and computes the appropriate $q$ such that the constraint in the previous equation is fulfilled. This function is particularly useful when we need to constrain multiple products by expressing the constraint as a quadratic expression and checking them in one run.
 
 
