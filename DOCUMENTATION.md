@@ -129,12 +129,28 @@ Once we have the addition, we need to constrain the result. This can be done usi
 
 ### Multiplication
 
-To do the multiplication, we first multiply two `BigNum` instances using an unconstrained function, and then we constrain the multiplication using the constrained functoin `evaluate_quadratic_expression()`.
+To do the multiplication, we first multiply two `BigNum` instances using an unconstrained function, and then we constrain the multiplication using the constrained function `evaluate_quadratic_expression()`.
 
-For the unconstrained multiplication function, we have two different flavors to multiply two $N$ limb numbers: we can perform schoolbook, or we can use the Karatsuba algorithm. Both are useful depending on the number of limbs: Karatsuba has a better performance for large values of $N$, while schoolbook has a better performance for small values of $N$.
+For the unconstrained multiplication function, we have two different flavors for multiplying two $N$ limb numbers: We can perform a schoolbook or use the Karatsuba algorithm. Both are useful depending on the number of limbs: Karatsuba performs better for large values of $N$, while schoolbook performs better for small values of $N$.
 
 We next describe both approaches.
 
 #### Schoolbook multiplication
 
+In the schoolbook approach, to multiply two $N$-limb big integers $a$ and $b$, we perform the operation `result[i + j] += a[i] * b[j]`. where $i, j \in \lbrace 0, \dots, N - 1 \rbrace$. This approach is more efficient when $N$ is small.
+
 #### Karatsuba multiplication
+
+Notice that the schoolbook multiplication has a $O(N^2)$ complexity. However, we can make some improvements if we use the Karatsua algorithm. For two $N$ limb elements $a$ and $b$, we can compute the product between $a$ and $b$ by dividing them into $(N/2)$-limb integers $a_l, a_h, b_l, b_h$. Then, the multiplication is done as follows:
+
+$$ r_0 = a_l \times b_l, $$
+
+$$ r_2 = a_h \times b_h, $$
+
+$$ r_1 = (a_l + a_h) \times (b_l + b_h) - t_0 - t_1. $$
+
+Then, the result will be the limbs $[r_0, r_1, r_2]$, where $t_0$ is the least significant limb. Those limbs will likely overlap, so we need an extra linear amount of additions to correct that overlap. The multiplication procedure can be applied recursively until $N=2$, and at this recursion level, we use traditional multiplication.
+
+It is important to mention that we can do some levels of the recursion using the Karatsuba approach and finish the recursion using schoolbook multiplication. However, we need to perform a performance evaluation to determine whether it is appropriate to stop the Karatsuba recursion and finish it using schoolbooks. The evaluation is left as future work.
+
+Due to Noir's limitations, the Karatsuba method can only be implemented for a fixed and predefined number of limbs. Therefore, we have implemented Karatsuba multiplication for the following values of $N$: 13, 17, 18, 26, and 34. The addition of more values is left for future work.

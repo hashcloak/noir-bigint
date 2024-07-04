@@ -9,7 +9,7 @@ The `BigNum` struct is the base struct that represents a big integer, where each
 ### Functions
 
 - `new() -> Self`: creates a new `BigNum` instance representing zero.
-- `one() -> Self`: creates a new `BigNum` instance representing the number one.
+- `one() -> Self`: creates a new `BigNum` iprocess can be repeated recursivelnstance representing the number one.
 - `from_byte_be<NBytes>(x: [u8; NBytes]) -> Self`: takes an array of bytes in big-endian format. In the representation, each 120-bit limb is represented using 15 bytes. We also require that the size of the byte array is long enough to cover the number of bits in the modulus.
 - `validate_in_range(self)`: checks if each limb of `self` can be represented in 120 bits. Also, we check that the number is less than $2^{\lceil \log_2 p \rceil}$. This is a lazy check to obtain a better performance that is done instead of checking that `self` is less than $p$.
 - `assert_is_not_equal(self, other: Self)`: checks if $a = b \mod N$. This method is sound but not complete. It may happen that $a \neq b$ but $a = b \mod N$; however, the probability that this occurs is small.
