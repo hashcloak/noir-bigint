@@ -1,7 +1,11 @@
 use crate::utils::arrayX::ArrayX;
 use crate::BigNum;
 use crate::BigNumParamsTrait;
-use crate::bignum_test::{test_mul, test_add, test_div, test_invmod, assert_is_not_equal, assert_is_not_equal_fail, assert_is_not_equal_overloaded_lhs_fail, assert_is_not_equal_overloaded_rhs_fail, assert_is_not_equal_overloaded_fail};
+use crate::bignum_test::{
+    test_mul, test_add, test_div, test_invmod, assert_is_not_equal, assert_is_not_equal_fail,
+    assert_is_not_equal_overloaded_lhs_fail, assert_is_not_equal_overloaded_rhs_fail,
+    assert_is_not_equal_overloaded_fail
+};
 use crate::mul::schoolbook_mult;
 
 struct Test1000NonPrimeParams {}

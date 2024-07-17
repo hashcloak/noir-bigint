@@ -1,21 +1,19 @@
+use dep::std;
 use crate::utils::arrayX::ArrayX;
 use crate::BigNum;
 use crate::bignum_test::{Fq, Fqq};
 use crate::fields::bn254Fq::BNParams as BNParams;
 use crate::BigNumParamsTrait;
-use crate::test_params::{
-  nonprime3000::Test3000NonPrimeParams,
-  prime256::Test256PrimeParams,
-  };
+use crate::test_params::{nonprime3000::Test3000NonPrimeParams, prime256::Test256PrimeParams};
 
 /**
   * @brief schoolbook multiplication of 2 N-length arrays, no reductions
   **/
 pub fn schoolbook_mult<let N: u64>(a: [Field; N], b: [Field; N]) -> ArrayX<Field, N, 2> {
-    let mut res = ArrayX { segments: [[0;N], [0; N]] };
+    let mut res = ArrayX { segments: [[0; N], [0; N]] };
     for i in 0..N {
         for j in 0..N {
-            res.add_assign(i+j, a[i] * b[j]);
+            res.add_assign(i + j, a[i] * b[j]);
         }
     }
     res
@@ -24,8 +22,8 @@ pub fn schoolbook_mult<let N: u64>(a: [Field; N], b: [Field; N]) -> ArrayX<Field
 /**
   * @brief simple addition of limbs of 2 N-length arrays, no reductions
   **/
-fn add_arrays<let N: u64>(a: [Field; N], b: [Field; N]) -> [Field;N] {
-    let mut res = [0;N];
+fn add_arrays<let N: u64>(a: [Field; N], b: [Field; N]) -> [Field; N] {
+    let mut res = [0; N];
     for i in 0..N {
         res[i] = a[i]+b[i];
     }
@@ -38,11 +36,15 @@ fn add_arrays<let N: u64>(a: [Field; N], b: [Field; N]) -> [Field;N] {
   *              thus some limbs might have a "negative" value which has wrapped
   *              around in the Field type.
   **/
-fn subtract_arrays<let N: u64>(a: ArrayX<Field, N, 2>, b: ArrayX<Field, N, 2>, c: ArrayX<Field, N, 2>) -> ArrayX<Field, N, 2> {
-    let mut res = ArrayX { segments: [[0;N], [0; N]] };
+fn subtract_arrays<let N: u64>(
+    a: ArrayX<Field, N, 2>,
+    b: ArrayX<Field, N, 2>,
+    c: ArrayX<Field, N, 2>
+) -> ArrayX<Field, N, 2> {
+    let mut res = ArrayX { segments: [[0; N], [0; N]] };
     for i in 0..2 {
         for j in 0..N {
-            res.segments[i][j] = a.segments[i][j] - b.segments[i][j] - c.segments[i][j]; 
+            res.segments[i][j] = a.segments[i][j] - b.segments[i][j] - c.segments[i][j];
         }
     }
     res
@@ -63,26 +65,30 @@ fn subtract_arrays<let N: u64>(a: ArrayX<Field, N, 2>, b: ArrayX<Field, N, 2>, c
   * Note that M is the length of the larger half. This needs to be a numeric generic, in order
   * to create an array of that length that will be accepted by the compiler
   **/
-fn get_r012_karatsuba<let N: u64, let M: u64>(a: [Field; N], b: [Field; N], odd: bool) -> (ArrayX<Field, M, 2>, ArrayX<Field, M, 2>, ArrayX<Field, M, 2>) {
+fn get_r012_karatsuba<let N: u64, let M: u64>(
+    a: [Field; N],
+    b: [Field; N],
+    odd: bool
+) -> (ArrayX<Field, M, 2>, ArrayX<Field, M, 2>, ArrayX<Field, M, 2>) {
     // Initialize lo/hi arrays of same length, even if the lower half is shorter
     // this is for consequent functions
     // a = [a_lo, a_hi], b = [b_lo, b_hi]
-    let mut a_lo = [0;M];
-    let mut a_hi = [0;M];
-    let mut b_lo = [0;M];
-    let mut b_hi = [0;M];
+    let mut a_lo = [0; M];
+    let mut a_hi = [0; M];
+    let mut b_lo = [0; M];
+    let mut b_hi = [0; M];
 
     let mut len_lo = M;
     if odd {
-      len_lo -= 1; 
+        len_lo -= 1;
     }
     for i in 0..len_lo {
-      a_lo[i] = a[i];
-      b_lo[i] = b[i];
+        a_lo[i] = a[i];
+        b_lo[i] = b[i];
     }
     for i in len_lo..N {
-      a_hi[i-len_lo] = a[i];
-      b_hi[i-len_lo] = b[i];
+        a_hi[i-len_lo] = a[i];
+        b_hi[i-len_lo] = b[i];
     }
 
     // The following is calculated:
@@ -105,7 +111,7 @@ fn get_r012_karatsuba<let N: u64, let M: u64>(a: [Field; N], b: [Field; N], odd:
     // This subtraction gives no issues if used in combination with combining these results as follows:
     // [r0_lo, r0_hi + r1_lo, r1_hi + r2_lo, r2_hi]
     // because all limbs will be positive, even if in intermediate value r1 there may be "negative" values
-    r1 = subtract_arrays(r1, r0, r2);  
+    r1 = subtract_arrays(r1, r0, r2);
 
     (r0, r1, r2)
 }
@@ -119,21 +125,26 @@ fn get_r012_karatsuba<let N: u64, let M: u64>(a: [Field; N], b: [Field; N], odd:
   * @param r1: 2 arrays of length M, contains value a_lo*b_hi + a_hi*b_lo
   * @param r2: 2 arrays of length M, contains value a_hi * b_hi
   **/
-fn combine_res_karatsuba<let N: u64, let M: u64>(r0: ArrayX<Field, M, 2>, r1: ArrayX<Field, M, 2>, r2: ArrayX<Field, M, 2>, odd: bool) -> ArrayX<Field, N, 2> {
+fn combine_res_karatsuba<let N: u64, let M: u64>(
+    r0: ArrayX<Field, M, 2>,
+    r1: ArrayX<Field, M, 2>,
+    r2: ArrayX<Field, M, 2>,
+    odd: bool
+) -> ArrayX<Field, N, 2> {
     // Result has 2*N limbs, of which the last will be 0
-    let mut res = ArrayX { segments: [[0;N], [0;N]] };
-    
-    let mut len_lo = M; 
+    let mut res = ArrayX { segments: [[0; N], [0; N]] };
+
+    let mut len_lo = M;
     if odd {
-      len_lo -= 1;
+        len_lo -= 1;
     }
-    
+
     // r0 -> low terms, r1 -> middle terms, r2 -> high terms
     // res = [r0_lo, r0_hi + r1_lo, r1_hi + r2_lo, r2_hi]
     for i in 0..N {
-      res.add_assign(i, r0.get(i));
-      res.add_assign(i+len_lo, r1.get(i));
-      res.add_assign(i+len_lo+len_lo, r2.get(i));
+        res.add_assign(i, r0.get(i));
+        res.add_assign(i + len_lo, r1.get(i));
+        res.add_assign(i + len_lo + len_lo, r2.get(i));
     }
     res
 }
@@ -143,7 +154,7 @@ fn combine_res_karatsuba<let N: u64, let M: u64>(r0: ArrayX<Field, M, 2>, r1: Ar
   * @description This 1 level Karatsuba, the next level does schoolbook mult
   **/
 pub fn karatsuba_mult_13(a: [Field; 13], b: [Field; 13]) -> ArrayX<Field, 13, 2> {
-    let (r0, r1, r2): (ArrayX<Field, 7, 2>, ArrayX<Field, 7, 2>, ArrayX<Field, 7, 2>) = get_r012_karatsuba(a, b, true); 
+    let (r0, r1, r2): (ArrayX<Field, 7, 2>, ArrayX<Field, 7, 2>, ArrayX<Field, 7, 2>) = get_r012_karatsuba(a, b, true);
     combine_res_karatsuba(r0, r1, r2, true)
 }
 
@@ -152,7 +163,7 @@ pub fn karatsuba_mult_13(a: [Field; 13], b: [Field; 13]) -> ArrayX<Field, 13, 2>
   * @description This is 1 level Karatsuba, the next level does schoolbook mult
   **/
 pub fn karatsuba_mult_17(a: [Field; 17], b: [Field; 17]) -> ArrayX<Field, 17, 2> {
-    let (r0, r1, r2): (ArrayX<Field, 9, 2>, ArrayX<Field, 9, 2>, ArrayX<Field, 9, 2>) = get_r012_karatsuba(a, b, true); 
+    let (r0, r1, r2): (ArrayX<Field, 9, 2>, ArrayX<Field, 9, 2>, ArrayX<Field, 9, 2>) = get_r012_karatsuba(a, b, true);
     combine_res_karatsuba(r0, r1, r2, true)
 }
 
@@ -161,7 +172,7 @@ pub fn karatsuba_mult_17(a: [Field; 17], b: [Field; 17]) -> ArrayX<Field, 17, 2>
   * @description This 1 level Karatsuba, the next level does schoolbook mult
   **/
 pub fn karatsuba_mult_18(a: [Field; 18], b: [Field; 18]) -> ArrayX<Field, 18, 2> {
-    let (r0, r1, r2): (ArrayX<Field, 9, 2>, ArrayX<Field, 9, 2>, ArrayX<Field, 9, 2>) = get_r012_karatsuba(a, b, false); 
+    let (r0, r1, r2): (ArrayX<Field, 9, 2>, ArrayX<Field, 9, 2>, ArrayX<Field, 9, 2>) = get_r012_karatsuba(a, b, false);
     combine_res_karatsuba(r0, r1, r2, false)
 }
 
@@ -171,19 +182,19 @@ pub fn karatsuba_mult_18(a: [Field; 18], b: [Field; 18]) -> ArrayX<Field, 18, 2>
   *              - Karatsuba-26 -> Karatsuba-13 -> Schoolbook
   **/
 pub fn karatsuba_mult_26(a: [Field; 26], b: [Field; 26]) -> ArrayX<Field, 26, 2> {
-    let mut a_lo = [0;13];
-    let mut a_hi = [0;13];
-    let mut b_lo = [0;13];
-    let mut b_hi = [0;13];
+    let mut a_lo = [0; 13];
+    let mut a_hi = [0; 13];
+    let mut b_lo = [0; 13];
+    let mut b_hi = [0; 13];
 
     let len_lo = 13;
     for i in 0..len_lo {
-      a_lo[i] = a[i];
-      b_lo[i] = b[i];
+        a_lo[i] = a[i];
+        b_lo[i] = b[i];
     }
     for i in len_lo..26 {
-      a_hi[i-len_lo] = a[i];
-      b_hi[i-len_lo] = b[i];
+        a_hi[i-len_lo] = a[i];
+        b_hi[i-len_lo] = b[i];
     }
 
     let r0: ArrayX<Field, 13, 2> = karatsuba_mult_13(a_lo, b_lo);
@@ -192,8 +203,8 @@ pub fn karatsuba_mult_26(a: [Field; 26], b: [Field; 26]) -> ArrayX<Field, 26, 2>
     let added_a = add_arrays(a_lo, a_hi);
     let added_b = add_arrays(b_lo, b_hi);
     let mut r1: ArrayX<Field, 13, 2> = karatsuba_mult_13(added_a, added_b);
-    r1 = subtract_arrays(r1, r0, r2);  
-    
+    r1 = subtract_arrays(r1, r0, r2);
+
     combine_res_karatsuba(r0, r1, r2, false)
 }
 
@@ -203,19 +214,19 @@ pub fn karatsuba_mult_26(a: [Field; 26], b: [Field; 26]) -> ArrayX<Field, 26, 2>
   *              - Karatsuba-34 -> Karatsuba-17 -> Schoolbook
   **/
 pub fn karatsuba_mult_34(a: [Field; 34], b: [Field; 34]) -> ArrayX<Field, 34, 2> {
-    let mut a_lo = [0;17];
-    let mut a_hi = [0;17];
-    let mut b_lo = [0;17];
-    let mut b_hi = [0;17];
+    let mut a_lo = [0; 17];
+    let mut a_hi = [0; 17];
+    let mut b_lo = [0; 17];
+    let mut b_hi = [0; 17];
 
     let len_lo = 17;
     for i in 0..len_lo {
-      a_lo[i] = a[i];
-      b_lo[i] = b[i];
+        a_lo[i] = a[i];
+        b_lo[i] = b[i];
     }
     for i in len_lo..34 {
-      a_hi[i-len_lo] = a[i];
-      b_hi[i-len_lo] = b[i];
+        a_hi[i-len_lo] = a[i];
+        b_hi[i-len_lo] = b[i];
     }
 
     let r0: ArrayX<Field, 17, 2> = karatsuba_mult_17(a_lo, b_lo);
@@ -224,8 +235,8 @@ pub fn karatsuba_mult_34(a: [Field; 34], b: [Field; 34]) -> ArrayX<Field, 34, 2>
     let added_a = add_arrays(a_lo, a_hi);
     let added_b = add_arrays(b_lo, b_hi);
     let mut r1: ArrayX<Field, 17, 2> = karatsuba_mult_17(added_a, added_b);
-    r1 = subtract_arrays(r1, r0, r2);  
-    
+    r1 = subtract_arrays(r1, r0, r2);
+
     combine_res_karatsuba(r0, r1, r2, false)
 }
 
@@ -246,7 +257,7 @@ fn test_karatsuba_mult_18() {
 }
 
 #[test]
-fn test_schoolbook_mult(){
+fn test_schoolbook_mult() {
     let a: TestMod256Prime = BigNum::__derive_from_seed([1, 2, 3, 4]);
     let b: TestMod256Prime = BigNum::__derive_from_seed([4, 5, 6, 7]);
 
@@ -260,13 +271,13 @@ fn test_schoolbook_mult(){
     let c = schoolbook_mult(a.limbs, b.limbs);
     let c_rev = schoolbook_mult(b.limbs, a.limbs);
     assert(c == c_rev);
-    
+
     // Check a*1 == a and 1*b == b
     let one: TestMod3000 = BigNum::one();
 
     assert(schoolbook_mult(a.limbs, one.limbs).segments[0] == a.limbs);
     assert(schoolbook_mult(a.limbs, one.limbs).segments[1] == BigNum::new().limbs);
-    
+
     assert(schoolbook_mult(one.limbs, b.limbs).segments[0] == b.limbs);
     assert(schoolbook_mult(b.limbs, one.limbs).segments[1] == BigNum::new().limbs);
 }
