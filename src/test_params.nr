@@ -4,5 +4,8 @@ mod nonprime4000;
 mod nonprime250;
 mod prime256;
 mod prime2048;
+mod nonprime230;
+mod nonprime590;
+mod nonprime1915;
 
 use crate::BigNum;
