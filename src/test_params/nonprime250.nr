@@ -1,10 +1,14 @@
 use crate::utils::arrayX::ArrayX;
 use crate::BigNum;
 use crate::BigNumParamsTrait;
-use crate::bignum_test::{test_mul, test_add, test_div, test_invmod, assert_is_not_equal, assert_is_not_equal_fail, assert_is_not_equal_overloaded_lhs_fail, assert_is_not_equal_overloaded_rhs_fail, assert_is_not_equal_overloaded_fail};
-use crate::mul::schoolbook_mult;
+use crate::bignum_test::{
+    test_mul, test_add, test_div, test_invmod, assert_is_not_equal, assert_is_not_equal_fail,
+    assert_is_not_equal_overloaded_lhs_fail, assert_is_not_equal_overloaded_rhs_fail,
+    assert_is_not_equal_overloaded_fail
+};
+use crate::mul::{schoolbook_mult, karatsuba_mult_3};
 
-struct Test250NonPrimeParams {} 
+struct Test250NonPrimeParams {}
 
 impl BigNumParamsTrait<3> for Test250NonPrimeParams {
   // p = 1361178060504921827139522133321204869010984103087287764085951217604594813629
@@ -33,10 +37,9 @@ impl BigNumParamsTrait<3> for Test250NonPrimeParams {
   }
 
   fn mult(a: [Field; 3], b: [Field; 3]) -> ArrayX<Field, 3, 2> {
-    schoolbook_mult(a,b)
+    karatsuba_mult_3(a,b)
   }
 }
-
 
 #[test]
 fn test_mul_250_nonprime() {

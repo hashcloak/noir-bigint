@@ -264,6 +264,7 @@ pub fn karatsuba_mult_3(a: [Field; 3], b: [Field; 3]) -> ArrayX<Field, 3, 2> {
 
 /**
   * @brief Karatsuba multiplication fixed for 4 limbs.
+  * @description This is a two level Karatsuba for numbers with 4 limbs.
   **/
 pub fn karatsuba_mult_4(a: [Field; 4], b: [Field; 4]) -> ArrayX<Field, 4, 2> {
     let mut a_lo = [0; 2];
@@ -293,7 +294,9 @@ pub fn karatsuba_mult_4(a: [Field; 4], b: [Field; 4]) -> ArrayX<Field, 4, 2> {
 }
 
 /**
-  * @brief Karatsuba multiplication fixed for 4 limbs.
+  * @brief Karatsuba multiplication fixed for 6 limbs.
+  * @description This is an implementation of a full-level Karatsuba for numbers
+  *              with 5 limbs.
   **/
 pub fn karatsuba_mult_5(a: [Field; 5], b: [Field; 5]) -> ArrayX<Field, 5, 2> {
     let mut a_lo = [0; 3];
@@ -322,6 +325,11 @@ pub fn karatsuba_mult_5(a: [Field; 5], b: [Field; 5]) -> ArrayX<Field, 5, 2> {
     combine_res_karatsuba(r0, r1, r2, true)
 }
 
+/**
+  * @brief Karatsuba multiplication fixed for 6 limbs.
+  * @description This is an implementation of a full-level Karatsuba for numbers
+  *              with 6 limbs.
+  **/
 pub fn karatsuba_mult_6(a: [Field; 6], b: [Field; 6]) -> ArrayX<Field, 6, 2> {
     let mut a_lo = [0; 3];
     let mut a_hi = [0; 3];
@@ -349,6 +357,11 @@ pub fn karatsuba_mult_6(a: [Field; 6], b: [Field; 6]) -> ArrayX<Field, 6, 2> {
     combine_res_karatsuba(r0, r1, r2, false)
 }
 
+/**
+  * @brief Karatsuba multiplication fixed for 7 limbs.
+  * @description This is an implementation of a full-level Karatsuba for numbers
+  *              with 7 limbs.
+  **/
 pub fn karatsuba_mult_7(a: [Field; 7], b: [Field; 7]) -> ArrayX<Field, 7, 2> {
     let mut a_lo = [0; 4];
     let mut a_hi = [0; 4];
@@ -376,6 +389,11 @@ pub fn karatsuba_mult_7(a: [Field; 7], b: [Field; 7]) -> ArrayX<Field, 7, 2> {
     combine_res_karatsuba(r0, r1, r2, true)
 }
 
+/**
+  * @brief Karatsuba multiplication fixed for 8 limbs.
+  * @description This is an implementation of a full-level Karatsuba for numbers
+  *              with 8 limbs.
+  **/
 pub fn karatsuba_mult_8(a: [Field; 8], b: [Field; 8]) -> ArrayX<Field, 8, 2> {
     let mut a_lo = [0; 4];
     let mut a_hi = [0; 4];
@@ -403,6 +421,11 @@ pub fn karatsuba_mult_8(a: [Field; 8], b: [Field; 8]) -> ArrayX<Field, 8, 2> {
     combine_res_karatsuba(r0, r1, r2, false)
 }
 
+/**
+  * @brief Karatsuba multiplication fixed for 9 limbs.
+  * @description This is an implementation of a full-level Karatsuba for numbers
+  *              with 9 limbs.
+  **/
 pub fn karatsuba_mult_9(a: [Field; 9], b: [Field; 9]) -> ArrayX<Field, 9, 2> {
     let mut a_lo = [0; 5];
     let mut a_hi = [0; 5];
@@ -430,6 +453,11 @@ pub fn karatsuba_mult_9(a: [Field; 9], b: [Field; 9]) -> ArrayX<Field, 9, 2> {
     combine_res_karatsuba(r0, r1, r2, true)
 }
 
+/**
+  * @brief Karatsuba multiplication fixed for 10 limbs.
+  * @description This is an implementation of a full-level Karatsuba for numbers
+  *              with 10 limbs.
+  **/
 pub fn karatsuba_mult_10(a: [Field; 10], b: [Field; 10]) -> ArrayX<Field, 10, 2> {
     let mut a_lo = [0; 5];
     let mut a_hi = [0; 5];
@@ -457,6 +485,11 @@ pub fn karatsuba_mult_10(a: [Field; 10], b: [Field; 10]) -> ArrayX<Field, 10, 2>
     combine_res_karatsuba(r0, r1, r2, false)
 }
 
+/**
+  * @brief Karatsuba multiplication fixed for 11 limbs.
+  * @description This is an implementation of a full-level Karatsuba for numbers
+  *              with 11 limbs.
+  **/
 pub fn karatsuba_mult_11(a: [Field; 11], b: [Field; 11]) -> ArrayX<Field, 11, 2> {
     let mut a_lo = [0; 6];
     let mut a_hi = [0; 6];
@@ -484,6 +517,11 @@ pub fn karatsuba_mult_11(a: [Field; 11], b: [Field; 11]) -> ArrayX<Field, 11, 2>
     combine_res_karatsuba(r0, r1, r2, true)
 }
 
+/**
+  * @brief Karatsuba multiplication fixed for 12 limbs.
+  * @description This is an implementation of a full-level Karatsuba for numbers
+  *              with 12 limbs.
+  **/
 pub fn karatsuba_mult_12(a: [Field; 12], b: [Field; 12]) -> ArrayX<Field, 12, 2> {
     let mut a_lo = [0; 6];
     let mut a_hi = [0; 6];
@@ -511,6 +549,11 @@ pub fn karatsuba_mult_12(a: [Field; 12], b: [Field; 12]) -> ArrayX<Field, 12, 2>
     combine_res_karatsuba(r0, r1, r2, false)
 }
 
+/**
+  * @brief Karatsuba multiplication fixed for 14 limbs.
+  * @description This is an implementation of a full-level Karatsuba for numbers
+  *              with 14 limbs.
+  **/
 pub fn karatsuba_mult_14(a: [Field; 14], b: [Field; 14]) -> ArrayX<Field, 14, 2> {
     let mut a_lo = [0; 7];
     let mut a_hi = [0; 7];
@@ -538,6 +581,11 @@ pub fn karatsuba_mult_14(a: [Field; 14], b: [Field; 14]) -> ArrayX<Field, 14, 2>
     combine_res_karatsuba(r0, r1, r2, false)
 }
 
+/**
+  * @brief Karatsuba multiplication fixed for 15 limbs.
+  * @description This is an implementation of a full-level Karatsuba for numbers
+  *              with 15 limbs.
+  **/
 pub fn karatsuba_mult_15(a: [Field; 15], b: [Field; 15]) -> ArrayX<Field, 15, 2> {
     let mut a_lo = [0; 8];
     let mut a_hi = [0; 8];
@@ -565,6 +613,11 @@ pub fn karatsuba_mult_15(a: [Field; 15], b: [Field; 15]) -> ArrayX<Field, 15, 2>
     combine_res_karatsuba(r0, r1, r2, true)
 }
 
+/**
+  * @brief Karatsuba multiplication fixed for 16 limbs.
+  * @description This is an implementation of a full-level Karatsuba for numbers
+  *              with 16 limbs.
+  **/
 pub fn karatsuba_mult_16(a: [Field; 16], b: [Field; 16]) -> ArrayX<Field, 16, 2> {
     let mut a_lo = [0; 8];
     let mut a_hi = [0; 8];
