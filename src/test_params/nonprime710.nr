@@ -8,9 +8,9 @@ use crate::bignum_test::{
 };
 use crate::mul::{schoolbook_mult, karatsuba_mult_6};
 
-struct Test250NonPrimeParams {}
+struct Test710NonPrimeParams {}
 
-impl BigNumParamsTrait<6> for Test250NonPrimeParams {
+impl BigNumParamsTrait<6> for Test710NonPrimeParams {
   fn modulus() -> [Field; 6] {
     [647928822784623383825278292021294956, 1250188786609018056096879721322352562, 825331467225132925360163562634644201, 42445014026319740193426029856789736, 986648449195183431119326421613378379, 289757284842273143711568178770798]
   }
