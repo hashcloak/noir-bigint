@@ -646,8 +646,8 @@ pub fn karatsuba_mult_16(a: [Field; 16], b: [Field; 16]) -> ArrayX<Field, 16, 2>
 }
 
 type TestMod3000 = BigNum<26, Test3000NonPrimeParams>;
-type TestMod256Prime = BigNum<3, Test256PrimeParams>;
 type TestMod230 = BigNum<2, Test230NonPrimeParams>;
+type TestMod256Prime = BigNum<3, Test256PrimeParams>;
 type TestMod590 = BigNum<5, Test590NonPrimeParams>;
 type TestMod1915 = BigNum<16, Test1915NonPrimeParams>;
 
@@ -676,6 +676,22 @@ fn test_karatsuba_mult_2() {
     assert(c_schoolbook == c_karatsuba);
     assert(c_karatsuba == c_karatsuba_rev);
 }
+
+#[test]
+fn test_karatsuba_mult_3() {
+    let a: TestMod256Prime = BigNum::__derive_from_seed([1, 2, 3, 4]);
+    let b: TestMod256Prime = BigNum::__derive_from_seed([4, 5, 6, 7]);
+
+    let c_schoolbook = schoolbook_mult(a.limbs, b.limbs);
+    let c_karatsuba = karatsuba_mult_3(a.limbs, b.limbs);
+    let c_karatsuba_rev = karatsuba_mult_3(b.limbs, a.limbs);
+
+    assert(c_schoolbook == c_karatsuba);
+    assert(c_karatsuba == c_karatsuba_rev);
+}
+
+#[test]
+fn test_karatsuba_mult_4() {}
 
 #[test]
 fn test_karatsuba_mult_5() {

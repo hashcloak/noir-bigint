@@ -30,6 +30,6 @@ impl BigNumParamsTrait<16> for Test1915NonPrimeParams {
   }
 
   fn mult(a: [Field; 16], b: [Field; 16]) -> ArrayX<Field, 16, 2> {
-    karatsuba_mult_16(a, b)
+    schoolbook_mult(a, b)
   }
 }

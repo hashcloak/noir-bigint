@@ -1,0 +1,34 @@
+use crate::utils::arrayX::ArrayX;
+use crate::BigNum;
+use crate::BigNumParamsTrait;
+use crate::bignum_test::{
+    test_mul, test_add, test_div, test_invmod, assert_is_not_equal, assert_is_not_equal_fail,
+    assert_is_not_equal_overloaded_lhs_fail, assert_is_not_equal_overloaded_rhs_fail,
+    assert_is_not_equal_overloaded_fail
+};
+use crate::mul::{schoolbook_mult, karatsuba_mult_6};
+
+struct Test250NonPrimeParams {}
+
+impl BigNumParamsTrait<6> for Test250NonPrimeParams {
+  fn modulus() -> [Field; 6] {
+    [647928822784623383825278292021294956, 1250188786609018056096879721322352562, 825331467225132925360163562634644201, 42445014026319740193426029856789736, 986648449195183431119326421613378379, 289757284842273143711568178770798]
+  }
+
+  fn double_modulus() -> [Field; 6] {
+    [1295857645569246767650556584042589912, 1171149577433120239289952382364360548, 321434938665349977816520064988943827, 84890028052639480386852059713579473, 644068902605450989334845782946412182, 579514569684546287423136357541597]
+  }
+
+  fn redc_param() -> [Field; 6] {
+    // floor(2^(2*710) / p
+    [421728691545649195595691085284225733, 774721514352352658344100577401163065, 219015889645639501131100818743488127, 511295477092406702717107063952547951, 272222389975546844254545897209794333, 5815200358514293293445614612915671]
+  }
+
+  fn modulus_bits() -> u64 {
+    710
+  }
+
+  fn mult(a: [Field; 6], b: [Field; 6]) -> ArrayX<Field, 6, 2> {
+    karatsuba_mult_6(a, b)
+  }
+}
