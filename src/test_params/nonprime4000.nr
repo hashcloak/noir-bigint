@@ -6,7 +6,7 @@ use crate::bignum_test::{
     assert_is_not_equal_overloaded_lhs_fail, assert_is_not_equal_overloaded_rhs_fail,
     assert_is_not_equal_overloaded_fail
 };
-use crate::mul::{karatsuba_mult_34, schoolbook_mult};
+use crate::mul::schoolbook_mult;
 
 struct Test4000NonPrimeParams {}
 
@@ -32,7 +32,7 @@ impl BigNumParamsTrait<34> for Test4000NonPrimeParams {
 
   // 2 level karatsuba is the most performant (tested level 1,2,3)
   fn mult(a: [Field; 34], b: [Field; 34]) -> ArrayX<Field, 34, 2> {
-    karatsuba_mult_34(a,b)
+    schoolbook_mult(a,b)
     //schoolbook_mult(a, b)
   }
 }

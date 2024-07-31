@@ -6,7 +6,7 @@ use crate::bignum_test::{
     assert_is_not_equal_overloaded_lhs_fail, assert_is_not_equal_overloaded_rhs_fail,
     assert_is_not_equal_overloaded_fail
 };
-use crate::mul::{schoolbook_mult, karatsuba_mult_8};
+use crate::mul::schoolbook_mult;
 
 struct Test950NonPrimeParams {}
 
@@ -29,6 +29,6 @@ impl BigNumParamsTrait<8> for Test950NonPrimeParams {
   }
 
   fn mult(a: [Field; 8], b: [Field; 8]) -> ArrayX<Field, 8, 2> {
-    karatsuba_mult_8(a, b)
+    schoolbook_mult(a, b)
   }
 }
