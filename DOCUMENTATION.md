@@ -8,19 +8,19 @@ The goal is to implement a library that evaluates operations modulo an integer $
 
 Once the representation is defined, we want to expose an API that allows developers to write modular arithmetic zero-knowledge proofs using this big-integer modulus representation. Concretely, given $c \in \mathbb{Z}_p$, a prover wants to prove that they know $a, b \in \mathbb{Z}_p$, such that $c$ is the sum or the product of $a$ and $b$ modulo $p$. This modular arithmetic is relevant in other cryptographic constructions like RSA signature schemes.
 
-The implementation and this documentation follow the ideas presented in the blog post "[Big integer multiplication in Noir over arbitrary moduli](https://hackmd.io/@aztec-network/S1LyK89JC)" by Zachary James Williamson. We encourage readers to read the blog post to familiarize themselves with the initial ideas. However, much of the design considered in this implementation and documentation has changed significantly compared to the ideas presented in the blog port.
+The implementation and this documentation follow the ideas presented in the blog post "[Big integer multiplication in Noir over arbitrary moduli](https://hackmd.io/@aztec-network/S1LyK89JC)" by Zachary James Williamson. We encourage readers to read the blog post to familiarize themselves with the initial ideas. However, much of the design considered in this implementation and documentation has changed significantly compared to the ideas presented in the blog post.
 
 In the context of ZK-proofs, choosing $d$ is an important task, given that it will affect the efficiency of the proof generation. The algorithms considered in the library require approximately $O(N^{1.5})$ multiplications and additions and $O(l)$ range checks. As we mentioned before, $d$ is inversely proportional to $N$. Hence, a large $d$ would be a good choice for a large modulus. However, if the modulus is small, it is best to choose a small $d$ to reduce the complexity of the algorithms.
 
-In the rest of the document and the implementation, we will consider $d = 120$ as a reasonable choice of parameters. Also, in the implementation, we consider $N$ to be fixed because of the technical limitations of Noir, as the library does not support an efficient mechanism to store the limbs dynamically. Although the library support Rust-like vectors, they are not very efficient and pur goal is also to implement something that can be used in production. Hence, we are limited to using fixed-length arrays to represent the collection of limbs for a number. To give more freedom during circuit development, the API is designed so that the programmer can set the value of $N$ at compile time.
+In the rest of the document and the implementation, we will consider $d = 120$ as a reasonable choice of parameters. Also, in the implementation, we consider $N$ to be fixed because of the technical limitations of Noir, as the library does not support an efficient mechanism to store the limbs dynamically. Although the library support Rust-like vectors, they are not very efficient and our goal is also to implement something that can be used in production. Hence, we are limited to using fixed-length arrays to represent the collection of limbs for a number. To give more freedom during circuit development, the API is designed so that the programmer can set the value of $N$ at compile time.
 
 ## Big-integer representation
 
 The building block to construct a big-integer library is the BigNum struct:
 
 ```rust
-struct BigNum<N,Params> {
-    limbs: [Field; N],
+struct BigNum<let N: u64, Params> {
+    limbs: [Field; N]
 }
 ```
 
@@ -47,7 +47,7 @@ struct ArrayX<T, let N: u64, let SizeMultiplier: u8> {
 Notice that `ArrayX` is represented in a matrix fashion. However, it is important to remember that this can be considered an array of length `SizeMultiplier * N`.
 
 This array implementation contains some methods of interest:
-- The array implements the functions `set()` and `get()` to modify and retrieve a certain index from the array. The index of the array that is being queried needs to be between 0 and `SizeMultiplier * n - 1`.
+- The array implements the functions `set()` and `get()` to modify and retrieve a certain index from the array. The index of the array that is being queried needs to be between 0 and `SizeMultiplier * N - 1`.
 - The implementation of the array also has some arithmetic operations like `add_assign()`, `sub_assign()`, and `mul_assign()` that allow to do the arithmetic operations in place. 
 
 One of the main uses of `ArrayX` is to transform a number from a 120-bit radix representation to a 60-bit radix representation. When we transform over a number with $N$ limbs in the 120-bit representation, we obtain a representation in 60-bit radix with $2N$ limbs. Hence, in this case, we consider `SizeMultiplier` equal to two.
@@ -58,7 +58,7 @@ The `U60Repr` struct represents a big integer as an array of 60-bit limbs. The m
 
 The `U60Repr` struct is defined as an ArrayX of u64 elements:
 ```rust
-struct U60Repr<N, NumSegments> {
+struct U60Repr<let N: u32, let NumSegments: u32> {
     limbs: ArrayX<u64, N, NumSegments>
 }
 ```
